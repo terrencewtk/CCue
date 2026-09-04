@@ -16,7 +16,7 @@
 
 - **Two windows:** A normal control window handles caption settings, and a transparent always-on-top overlay displays captions.
 - **Paired subtitle lines:** Each visible row contains original text and, when enabled, its local translation immediately below.
-- **Configurable rolling view:** Users can display 1–10 recent caption rows; the default is three.
+- **Configurable rolling view:** Users can display 1–3 recent caption rows; the default is three.
 - **Global shortcut:** `Command+Shift+L` toggles capture by default. Users can record a different shortcut or disable it during onboarding or in Settings.
 
 ## Privacy and Distribution

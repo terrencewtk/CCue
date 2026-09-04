@@ -55,7 +55,7 @@ CCue is macOS-only because its audio capture and speech pipeline rely on CoreAud
 
 ## Quick start
 
-From the repository root, install the JavaScript dependencies and launch the app:
+From the repository root, install the Node.js dependencies and launch the app:
 
 ```bash
 npm ci
@@ -121,8 +121,9 @@ electron/
 local-asr/             Swift transcription helper
 local-translation/     Swift translation helper
 native/                Rust CoreAudio capture sidecar
-renderer/              Dependency-free window interfaces
-test/                  Node.js test suite
+renderer/              Dependency-free TypeScript window interfaces
+scripts/               TypeScript build and packaging helpers
+test/                  TypeScript Node.js test suite
 ```
 
 For architectural tradeoffs and current production gaps, see [DECISIONS.md](DECISIONS.md).
@@ -139,8 +140,9 @@ Useful individual commands:
 
 | Command | Purpose |
 | --- | --- |
-| `npm test` | Build Electron code and run the Node.js tests |
-| `npm run check` | Type-check Electron and syntax-check renderer scripts |
+| `npm test` | Compile and run the TypeScript Node.js tests |
+| `npm run check` | Type-check Electron, renderer, tests, and build helpers |
+| `npm run app:build` | Compile Electron and renderer TypeScript |
 | `npm run native:check` | Format-check and test the Rust sidecar |
 | `npm run local-asr:test` | Test the Swift transcription helper |
 | `npm run local-translation:check` | Build-check the Swift translation helper |

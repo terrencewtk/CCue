@@ -1,34 +1,36 @@
-const steps = [...document.querySelectorAll(".step")];
-const dots = [...document.querySelectorAll(".step-dot")];
-const backButton = document.querySelector("#backButton");
-const nextButton = document.querySelector("#nextButton");
-const errorMessage = document.querySelector("#onboardingError");
-const language = document.querySelector("#onboardingLanguage");
-const translationLanguage = document.querySelector("#onboardingTranslationLanguage");
-const downloadTranscription = document.querySelector("#downloadTranscription");
-const transcriptionCard = document.querySelector("#transcriptionCard");
-const transcriptionStatus = document.querySelector("#transcriptionStatus");
-const transcriptionPercent = document.querySelector("#transcriptionPercent");
-const transcriptionProgressTrack = document.querySelector("#transcriptionProgress");
-const transcriptionProgress = document.querySelector("#transcriptionProgress span");
-const downloadTranslation = document.querySelector("#downloadTranslation");
-const translationCard = document.querySelector("#translationCard");
-const translationStatus = document.querySelector("#translationStatus");
-const translationProgress = document.querySelector("#translationProgress");
-const translationSetup = document.querySelector("#translationSetup");
-const translationChoices = [...document.querySelectorAll('input[name="useTranslation"]')];
-const shortcutRecorder = document.querySelector("#onboardingShortcutRecorder");
-const shortcutRemove = document.querySelector("#onboardingShortcutRemove");
+import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
+
+const steps = [...document.querySelectorAll<HTMLElement>(".step")];
+const dots = [...document.querySelectorAll<HTMLElement>(".step-dot")];
+const backButton = document.querySelector<HTMLButtonElement>("#backButton")!;
+const nextButton = document.querySelector<HTMLButtonElement>("#nextButton")!;
+const errorMessage = document.querySelector<HTMLElement>("#onboardingError")!;
+const language = document.querySelector<HTMLSelectElement>("#onboardingLanguage")!;
+const translationLanguage = document.querySelector<HTMLSelectElement>("#onboardingTranslationLanguage")!;
+const downloadTranscription = document.querySelector<HTMLButtonElement>("#downloadTranscription")!;
+const transcriptionCard = document.querySelector<HTMLElement>("#transcriptionCard")!;
+const transcriptionStatus = document.querySelector<HTMLElement>("#transcriptionStatus")!;
+const transcriptionPercent = document.querySelector<HTMLElement>("#transcriptionPercent")!;
+const transcriptionProgressTrack = document.querySelector<HTMLElement>("#transcriptionProgress")!;
+const transcriptionProgress = document.querySelector<HTMLElement>("#transcriptionProgress span")!;
+const downloadTranslation = document.querySelector<HTMLButtonElement>("#downloadTranslation")!;
+const translationCard = document.querySelector<HTMLElement>("#translationCard")!;
+const translationStatus = document.querySelector<HTMLElement>("#translationStatus")!;
+const translationProgress = document.querySelector<HTMLElement>("#translationProgress")!;
+const translationSetup = document.querySelector<HTMLElement>("#translationSetup")!;
+const translationChoices = [...document.querySelectorAll<HTMLInputElement>('input[name="useTranslation"]')];
+const shortcutRecorder = document.querySelector<HTMLButtonElement>("#onboardingShortcutRecorder")!;
+const shortcutRemove = document.querySelector<HTMLButtonElement>("#onboardingShortcutRemove")!;
 
 let currentStep = 0;
 let transcriptionReadyFor = "";
 let translationReadyFor = "";
 let preparing = false;
-let selectedShortcut = window.shortcut.DEFAULT_SHORTCUT;
+let selectedShortcut: string | null = DEFAULT_SHORTCUT;
 let recordingShortcut = false;
 
-function translationEnabled() {
-  return document.querySelector('input[name="useTranslation"]:checked').value === "yes";
+function translationEnabled(): boolean {
+  return document.querySelector<HTMLInputElement>('input[name="useTranslation"]:checked')!.value === "yes";
 }
 
 function translationKey() {
@@ -40,7 +42,7 @@ function clearError() {
   errorMessage.classList.add("hidden");
 }
 
-function showError(error) {
+function showError(error: unknown): void {
   errorMessage.textContent = error instanceof Error ? error.message : String(error);
   errorMessage.classList.remove("hidden");
 }
@@ -52,7 +54,7 @@ function renderStep() {
     dot.classList.toggle("complete", index < currentStep);
   });
   backButton.classList.toggle("hidden", currentStep === 0 || currentStep === 4);
-  nextButton.textContent = ["Get started", "Continue", "Continue", "Continue", "Start using CCue"][currentStep];
+  nextButton.textContent = ["Get started", "Continue", "Continue", "Continue", "Start using CCue"][currentStep] ?? "Continue";
   clearError();
   updateActions();
 }
@@ -60,7 +62,7 @@ function renderStep() {
 function renderShortcut() {
   shortcutRecorder.textContent = recordingShortcut
     ? "Press shortcut…"
-    : window.shortcut.display(selectedShortcut);
+    : display(selectedShortcut);
   shortcutRecorder.classList.toggle("recording", recordingShortcut);
   shortcutRecorder.setAttribute("aria-pressed", String(recordingShortcut));
   shortcutRemove.textContent = selectedShortcut ? "Disable keyboard shortcut" : "Use default shortcut";
@@ -101,7 +103,7 @@ function showTranslationChecking() {
   updateActions();
 }
 
-function renderTranscriptionAvailability(installed) {
+function renderTranscriptionAvailability(installed: boolean): void {
   transcriptionCard.classList.toggle("ready", installed);
   transcriptionCard.classList.remove("error");
   transcriptionProgressTrack.classList.add("hidden");
@@ -119,7 +121,7 @@ function renderTranscriptionAvailability(installed) {
   updateActions();
 }
 
-function renderTranslationAvailability(installed) {
+function renderTranslationAvailability(installed: boolean): void {
   translationCard.classList.toggle("ready", installed);
   translationCard.classList.remove("error");
   translationProgress.classList.add("hidden");
@@ -191,13 +193,13 @@ function updateTargetOptions() {
 
 function updateTranslationChoice() {
   translationChoices.forEach((choice) => {
-    choice.closest(".choice-card").classList.toggle("selected", choice.checked);
+    choice.closest<HTMLElement>(".choice-card")!.classList.toggle("selected", choice.checked);
   });
   translationSetup.classList.toggle("hidden", !translationEnabled());
   updateActions();
 }
 
-function setPreparing(value) {
+function setPreparing(value: boolean): void {
   preparing = value;
   downloadTranscription.disabled = value;
   downloadTranslation.disabled = value;
@@ -297,7 +299,7 @@ shortcutRecorder.addEventListener("click", () => {
 });
 
 shortcutRemove.addEventListener("click", () => {
-  selectedShortcut = selectedShortcut ? null : window.shortcut.DEFAULT_SHORTCUT;
+  selectedShortcut = selectedShortcut ? null : DEFAULT_SHORTCUT;
   stopShortcutRecording();
   clearError();
 });
@@ -306,7 +308,7 @@ document.addEventListener("keydown", (event) => {
   if (!recordingShortcut) return;
   event.preventDefault();
   event.stopPropagation();
-  const result = window.shortcut.acceleratorFromEvent(event);
+  const result = acceleratorFromEvent(event);
   if (result.pending) return;
   if (result.cancelled) {
     stopShortcutRecording();
@@ -316,7 +318,7 @@ document.addEventListener("keydown", (event) => {
     showError(result.error);
     return;
   }
-  selectedShortcut = result.accelerator;
+  selectedShortcut = result.accelerator ?? null;
   stopShortcutRecording();
   clearError();
 }, true);
@@ -325,7 +327,7 @@ window.addEventListener("beforeunload", () => {
   void window.captions?.setShortcutRecording(false);
 });
 
-function handleModelStatus(status) {
+function handleModelStatus(status: ModelPreparationStatus): void {
   if (status.model === "transcription") {
     transcriptionStatus.textContent = status.detail;
     if (typeof status.percent === "number") {
@@ -360,7 +362,7 @@ function handleModelStatus(status) {
 
 if (!window.captions) {
   showError("The CCue setup bridge is unavailable. Restart or reinstall the app.");
-  document.querySelectorAll("button, input, select").forEach((control) => { control.disabled = true; });
+  document.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>("button, input, select").forEach((control) => { control.disabled = true; });
 } else {
   window.captions.onOnboardingModelStatus(handleModelStatus);
   window.captions.getOnboardingState().then(async ({ settings }) => {
@@ -371,7 +373,7 @@ if (!window.captions) {
     });
     selectedShortcut = settings.globalShortcut === null
       ? null
-      : settings.globalShortcut || window.shortcut.DEFAULT_SHORTCUT;
+      : settings.globalShortcut || DEFAULT_SHORTCUT;
     renderShortcut();
     updateTargetOptions();
     updateTranslationChoice();

@@ -1,9 +1,9 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const {
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
   reconcileTranscript,
   reconcileTurnTranscript
-} = require("../build/electron/captions/transcript-reconciler.js");
+} from "../electron/captions/transcript-reconciler";
 
 test("starts a caption and ignores empty updates", () => {
   assert.equal(reconcileTranscript("", "  Hello  "), "Hello");

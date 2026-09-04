@@ -1,17 +1,11 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2023",
     "module": "Node16",
     "moduleResolution": "Node16",
+    "types": ["node"],
     "rootDir": "electron",
-    "outDir": "build/electron",
-    "strict": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "noUncheckedIndexedAccess": true,
-    "noEmitOnError": true,
-    "skipLibCheck": true,
-    "sourceMap": true
+    "outDir": "build/electron"
   },
   "include": ["electron/**/*.ts"]
 }

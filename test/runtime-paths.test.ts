@@ -1,13 +1,13 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const path = require("node:path");
-const {
+import test from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import {
   applicationRoot,
   developmentSidecarPath,
   electronBuildRoot,
   preloadScriptPath,
   rendererFilePath
-} = require("../build/electron/shared/runtime-paths.js");
+} from "../electron/shared/runtime-paths";
 
 test("resolves shared runtime files from a compiled domain directory", () => {
   const projectRoot = path.resolve("/tmp/ccue");

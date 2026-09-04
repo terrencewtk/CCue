@@ -1,30 +1,36 @@
-const translationEnabled = document.querySelector("#translationEnabled");
-const overlayLineCount = document.querySelector("#overlayLineCount");
-const transcriptionModels = document.querySelector("#transcriptionModels");
-const translationModels = document.querySelector("#translationModels");
-const notice = document.querySelector("#notice");
-const shortcutRecorder = document.querySelector("#shortcutRecorder");
-const shortcutRemove = document.querySelector("#shortcutRemove");
-const navButtons = [...document.querySelectorAll(".nav-button[data-panel]")];
-const categoryButtons = [...document.querySelectorAll("nav .nav-button[data-panel]")];
-const panels = [...document.querySelectorAll("[data-panel-content]")];
-const {
+import {
   TRANSCRIPTION_LANGUAGES,
   TRANSLATION_LANGUAGES,
-  createModelChecker
-} = window.modelAvailability;
+  createModelChecker,
+  type LanguageModel
+} from "./model-availability.js";
+import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
+
+const translationEnabled = document.querySelector<HTMLInputElement>("#translationEnabled")!;
+const overlayLineCount = document.querySelector<HTMLSelectElement>("#overlayLineCount")!;
+const transcriptionModels = document.querySelector<HTMLElement>("#transcriptionModels")!;
+const translationModels = document.querySelector<HTMLElement>("#translationModels")!;
+const notice = document.querySelector<HTMLElement>("#notice")!;
+const shortcutRecorder = document.querySelector<HTMLButtonElement>("#shortcutRecorder")!;
+const shortcutRemove = document.querySelector<HTMLButtonElement>("#shortcutRemove")!;
+const navButtons = [...document.querySelectorAll<HTMLButtonElement>(".nav-button[data-panel]")];
+const categoryButtons = [...document.querySelectorAll<HTMLButtonElement>("nav .nav-button[data-panel]")];
+const panels = [...document.querySelectorAll<HTMLElement>("[data-panel-content]")];
 const modelChecker = createModelChecker(window.captions);
 
 let selectedLanguage = "ja-JP";
 let selectedTranslationLanguage = "en-US";
-let activeDownload = null;
+type ModelKind = "transcription" | "translation";
+type ModelState = "checking" | "ready" | "missing" | "downloading" | "unavailable" | "check-error" | "error" | "deleting" | "delete-error";
+type IconName = "checking" | "ready" | "missing" | "error" | "download" | "retry" | "trash";
+let activeDownload: { kind: ModelKind; value: string } | null = null;
 let refreshGeneration = 0;
-let selectedShortcut = window.shortcut.DEFAULT_SHORTCUT;
+let selectedShortcut: string | null = DEFAULT_SHORTCUT;
 let recordingShortcut = false;
 const runModelOperation = modelChecker.run;
 
-function icon(name) {
-  const paths = {
+function icon(name: IconName): string {
+  const paths: Record<IconName, string> = {
     checking: '<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="10 5"/>',
     ready: '<path d="m7.5 12.2 3 3 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     missing: '<circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v5m0 3v.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
@@ -36,7 +42,7 @@ function icon(name) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]}</svg>`;
 }
 
-function modelRow(model, kind) {
+function modelRow(model: LanguageModel, kind: ModelKind): HTMLElement {
   const row = document.createElement("div");
   row.className = "model-row";
   row.dataset.kind = kind;
@@ -76,24 +82,24 @@ function modelRow(model, kind) {
   input.addEventListener("change", () => selectModel(kind, model.value));
   action.addEventListener("click", () => {
     if (row.dataset.state === "check-error") retryModelCheck(kind, model.value);
-    else if (["ready", "delete-error"].includes(row.dataset.state)) deleteModel(kind, model.value);
+    else if (["ready", "delete-error"].includes(row.dataset.state ?? "")) deleteModel(kind, model.value);
     else downloadModel(kind, model.value);
   });
   return row;
 }
 
-function renderModelLists() {
+function renderModelLists(): void {
   transcriptionModels.replaceChildren(...TRANSCRIPTION_LANGUAGES.map((model) => modelRow(model, "transcription")));
   translationModels.replaceChildren(...TRANSLATION_LANGUAGES.map((model) => modelRow(model, "translation")));
   updateTranslationControls();
 }
 
-function findRow(kind, value) {
+function findRow(kind: ModelKind, value: string): HTMLElement | undefined {
   const list = kind === "transcription" ? transcriptionModels : translationModels;
-  return [...list.querySelectorAll(".model-row")].find((row) => row.dataset.language === value);
+  return [...list.querySelectorAll<HTMLElement>(".model-row")].find((row) => row.dataset.language === value);
 }
 
-function applyAvailability(kind, value, availability) {
+function applyAvailability(kind: ModelKind, value: string, availability: ModelAvailability): void {
   const row = findRow(kind, value);
   if (row) row.dataset.deletable = String(availability.deletable === true);
   if (availability.supported) {
@@ -110,18 +116,18 @@ function applyAvailability(kind, value, availability) {
   setModelState(kind, value, "unavailable", detail);
 }
 
-function setModelState(kind, value, state, detail = "", percent) {
+function setModelState(kind: ModelKind, value: string, state: ModelState, detail = "", percent?: number): void {
   const row = findRow(kind, value);
   if (!row) return;
   row.dataset.state = state;
-  const status = row.querySelector(".model-status");
-  const action = row.querySelector(".model-download");
-  const progress = row.querySelector(".model-progress");
-  const progressFill = progress.querySelector("span");
-  const explanation = row.querySelector(".model-explanation");
+  const status = row.querySelector<HTMLElement>(".model-status")!;
+  const action = row.querySelector<HTMLButtonElement>(".model-download")!;
+  const progress = row.querySelector<HTMLElement>(".model-progress")!;
+  const progressFill = progress.querySelector<HTMLElement>("span")!;
+  const explanation = row.querySelector<HTMLElement>(".model-explanation")!;
   const model = (kind === "transcription" ? TRANSCRIPTION_LANGUAGES : TRANSLATION_LANGUAGES)
-    .find((candidate) => candidate.value === value);
-  const stateView = {
+    .find((candidate) => candidate.value === value)!;
+  const stateView: [IconName, string] = ({
     checking: ["checking", "Checking"],
     ready: ["ready", "Ready"],
     missing: ["missing", "Not downloaded"],
@@ -131,7 +137,7 @@ function setModelState(kind, value, state, detail = "", percent) {
     error: ["error", "Download failed"],
     deleting: ["checking", "Deleting"],
     "delete-error": ["error", "Couldn’t delete"]
-  }[state];
+  } satisfies Record<ModelState, [IconName, string]>)[state];
   status.className = `model-status ${state}`;
   status.innerHTML = `${icon(stateView[0])}<span>${stateView[1]}</span>`;
   status.title = detail;
@@ -153,7 +159,7 @@ function setModelState(kind, value, state, detail = "", percent) {
   progress.classList.toggle("hidden", state !== "downloading");
   progressFill.style.width = `${typeof percent === "number" ? percent : 12}%`;
 
-  const subtitle = row.querySelector(".model-copy small");
+  const subtitle = row.querySelector<HTMLElement>(".model-copy small")!;
   subtitle.textContent = state === "downloading"
     ? (detail || "Preparing download…")
     : state === "ready"
@@ -177,28 +183,28 @@ function setModelState(kind, value, state, detail = "", percent) {
   explanation.classList.toggle("hidden", !shouldExplain);
 }
 
-function showPanel(panelName) {
+function showPanel(panelName?: string): void {
   panels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panelContent === panelName));
   navButtons.forEach((button) => button.classList.remove("active"));
   const category = categoryButtons.find((button) => button.dataset.panel === panelName);
   category?.classList.add("active");
-  document.querySelector(".content-pane").scrollTop = 0;
+  document.querySelector<HTMLElement>(".content-pane")!.scrollTop = 0;
 }
 
 navButtons.forEach((button) => {
   button.addEventListener("click", () => showPanel(button.dataset.panel));
 });
 
-function showError(error) {
+function showError(error: unknown): void {
   notice.textContent = error instanceof Error ? error.message : String(error);
   notice.classList.remove("hidden");
 }
 
-function clearError() {
+function clearError(): void {
   notice.classList.add("hidden");
 }
 
-function settings() {
+function settings(): CaptureSettings {
   return {
     language: selectedLanguage,
     translationEnabled: translationEnabled.checked,
@@ -208,31 +214,31 @@ function settings() {
   };
 }
 
-function renderShortcut() {
+function renderShortcut(): void {
   shortcutRecorder.textContent = recordingShortcut
     ? "Press shortcut…"
-    : window.shortcut.display(selectedShortcut);
+    : display(selectedShortcut);
   shortcutRecorder.classList.toggle("recording", recordingShortcut);
   shortcutRecorder.setAttribute("aria-pressed", String(recordingShortcut));
   shortcutRemove.disabled = !selectedShortcut;
 }
 
-function stopShortcutRecording() {
+function stopShortcutRecording(): void {
   recordingShortcut = false;
   void window.captions?.setShortcutRecording(false);
   renderShortcut();
 }
 
-function updateTranslationControls() {
+function updateTranslationControls(): void {
   translationModels.classList.toggle("disabled", !translationEnabled.checked);
-  translationModels.querySelectorAll("input, button").forEach((control) => {
-    const sameAsSource = control.closest(".model-row")?.dataset.language === selectedLanguage;
+  translationModels.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((control) => {
+    const sameAsSource = control.closest<HTMLElement>(".model-row")?.dataset.language === selectedLanguage;
     control.disabled = !translationEnabled.checked || sameAsSource || Boolean(activeDownload);
   });
   const sameLanguageRow = findRow("translation", selectedLanguage);
   if (sameLanguageRow) {
-    const status = sameLanguageRow.querySelector(".model-status");
-    const explanation = sameLanguageRow.querySelector(".model-explanation");
+    const status = sameLanguageRow.querySelector<HTMLElement>(".model-status")!;
+    const explanation = sameLanguageRow.querySelector<HTMLElement>(".model-explanation")!;
     status.className = "model-status unavailable";
     status.innerHTML = '<span>Same as spoken</span>';
     status.title = "Choose a different language for translation";
@@ -240,16 +246,16 @@ function updateTranslationControls() {
     explanation.textContent = "";
     explanation.title = "";
     explanation.classList.add("hidden");
-    sameLanguageRow.querySelector(".model-download").classList.add("hidden");
+    sameLanguageRow.querySelector<HTMLElement>(".model-download")!.classList.add("hidden");
   }
 }
 
-async function selectModel(kind, value) {
+async function selectModel(kind: ModelKind, value: string): Promise<void> {
   if (kind === "transcription") {
     selectedLanguage = value;
     if (selectedTranslationLanguage === value) {
       selectedTranslationLanguage = TRANSLATION_LANGUAGES.find((model) => model.value !== value)?.value || "en-US";
-      const nextTarget = findRow("translation", selectedTranslationLanguage)?.querySelector("input");
+      const nextTarget = findRow("translation", selectedTranslationLanguage)?.querySelector<HTMLInputElement>("input");
       if (nextTarget) nextTarget.checked = true;
     }
     updateTranslationControls();
@@ -261,7 +267,7 @@ async function selectModel(kind, value) {
   }
 }
 
-async function refreshModels() {
+async function refreshModels(): Promise<void> {
   const generation = ++refreshGeneration;
   for (const model of TRANSCRIPTION_LANGUAGES) {
     setModelState("transcription", model.value, "checking");
@@ -279,7 +285,7 @@ async function refreshModels() {
   await refreshTranslationModels(generation);
 }
 
-async function refreshTranslationModels(existingGeneration) {
+async function refreshTranslationModels(existingGeneration?: number): Promise<void> {
   const generation = existingGeneration ?? ++refreshGeneration;
   for (const model of TRANSLATION_LANGUAGES) {
     if (model.value === selectedLanguage) {
@@ -302,7 +308,7 @@ async function refreshTranslationModels(existingGeneration) {
   updateTranslationControls();
 }
 
-async function retryModelCheck(kind, value) {
+async function retryModelCheck(kind: ModelKind, value: string): Promise<void> {
   setModelState(kind, value, "checking");
   try {
     const result = kind === "transcription"
@@ -316,11 +322,11 @@ async function retryModelCheck(kind, value) {
   updateTranslationControls();
 }
 
-async function downloadModel(kind, value) {
+async function downloadModel(kind: ModelKind, value: string): Promise<void> {
   if (activeDownload) return;
   activeDownload = { kind, value };
   setModelState(kind, value, "downloading", "Preparing download…", 0);
-  document.querySelectorAll(".model-download").forEach((button) => { button.disabled = true; });
+  document.querySelectorAll<HTMLButtonElement>(".model-download").forEach((button) => { button.disabled = true; });
   try {
     if (kind === "transcription") {
       await runModelOperation(() => window.captions.prepareTranscriptionModel(value));
@@ -337,14 +343,14 @@ async function downloadModel(kind, value) {
     showError(error);
   } finally {
     activeDownload = null;
-    document.querySelectorAll(".model-download").forEach((button) => { button.disabled = false; });
+    document.querySelectorAll<HTMLButtonElement>(".model-download").forEach((button) => { button.disabled = false; });
     updateTranslationControls();
   }
 }
 
-async function deleteModel(kind, value) {
+async function deleteModel(kind: ModelKind, value: string): Promise<void> {
   if (kind !== "transcription" || activeDownload) return;
-  const model = TRANSCRIPTION_LANGUAGES.find((candidate) => candidate.value === value);
+  const model = TRANSCRIPTION_LANGUAGES.find((candidate) => candidate.value === value)!;
   if (!window.confirm(`Delete the ${model.name} transcription model? You can download it again later.`)) return;
 
   activeDownload = { kind, value };
@@ -360,20 +366,20 @@ async function deleteModel(kind, value) {
     showError(error);
   } finally {
     activeDownload = null;
-    const action = findRow(kind, value)?.querySelector(".model-download");
+    const action = findRow(kind, value)?.querySelector<HTMLButtonElement>(".model-download");
     if (action) action.disabled = false;
     updateTranslationControls();
   }
 }
 
-function handleModelStatus(status) {
+function handleModelStatus(status: ModelPreparationStatus): void {
   if (!activeDownload || status.model !== activeDownload.kind) return;
   if (status.state === "ready") setModelState(activeDownload.kind, activeDownload.value, "ready", status.detail, 100);
   else if (status.state === "error") setModelState(activeDownload.kind, activeDownload.value, "error", status.detail);
   else setModelState(activeDownload.kind, activeDownload.value, "downloading", status.detail, status.percent);
 }
 
-async function persistSettings() {
+async function persistSettings(): Promise<boolean> {
   try {
     await window.captions.saveSettings(settings());
     clearError();
@@ -386,7 +392,7 @@ async function persistSettings() {
 
 if (!window.captions) {
   showError("Electron preload bridge is unavailable. Restart the app or reinstall this build.");
-  document.querySelectorAll("input, select, button").forEach((control) => { control.disabled = true; });
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>("input, select, button").forEach((control) => { control.disabled = true; });
 } else {
   window.captions.getSettings().then((stored) => {
     selectedLanguage = stored.language || "ja-JP";
@@ -394,7 +400,7 @@ if (!window.captions) {
     selectedTranslationLanguage = stored.translationLanguage || "en-US";
     selectedShortcut = stored.globalShortcut === null
       ? null
-      : stored.globalShortcut || window.shortcut.DEFAULT_SHORTCUT;
+      : stored.globalShortcut || DEFAULT_SHORTCUT;
     if (selectedTranslationLanguage === selectedLanguage) {
       selectedTranslationLanguage = TRANSLATION_LANGUAGES.find((model) => model.value !== selectedLanguage)?.value || "en-US";
     }
@@ -431,7 +437,7 @@ if (!window.captions) {
     if (!recordingShortcut) return;
     event.preventDefault();
     event.stopPropagation();
-    const result = window.shortcut.acceleratorFromEvent(event);
+    const result = acceleratorFromEvent(event);
     if (result.pending) return;
     if (result.cancelled) {
       stopShortcutRecording();
@@ -442,7 +448,7 @@ if (!window.captions) {
       return;
     }
     const previous = selectedShortcut;
-    selectedShortcut = result.accelerator;
+    selectedShortcut = result.accelerator ?? null;
     stopShortcutRecording();
     if (!await persistSettings()) {
       selectedShortcut = previous;

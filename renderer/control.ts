@@ -1,25 +1,31 @@
-const captureButton = document.querySelector("#captureButton");
-const settingsButton = document.querySelector("#settingsButton");
-const statusMessage = document.querySelector("#statusMessage");
-const sessionLanguage = document.querySelector("#sessionLanguage");
-const sessionTranslationEnabled = document.querySelector("#sessionTranslationEnabled");
-const sessionTranslationLanguage = document.querySelector("#sessionTranslationLanguage");
-const {
+import {
   TRANSCRIPTION_LANGUAGES,
   TRANSLATION_LANGUAGES,
   createModelChecker,
-  isReady
-} = window.modelAvailability;
+  isReady,
+  type LanguageModel
+} from "./model-availability.js";
+
+const captureButton = document.querySelector<HTMLButtonElement>("#captureButton")!;
+const settingsButton = document.querySelector<HTMLButtonElement>("#settingsButton")!;
+const statusMessage = document.querySelector<HTMLElement>("#statusMessage")!;
+const sessionLanguage = document.querySelector<HTMLSelectElement>("#sessionLanguage")!;
+const sessionTranslationEnabled = document.querySelector<HTMLInputElement>("#sessionTranslationEnabled")!;
+const sessionTranslationLanguage = document.querySelector<HTMLSelectElement>("#sessionTranslationLanguage")!;
 const modelChecker = createModelChecker(window.captions);
 
+function messageFrom(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 let capturing = false;
-let captureState = "idle";
+let captureState: CaptureStatus["state"] = "idle";
 let sessionSettingsLoaded = false;
 let translationModelsAvailable = false;
-let availabilityRefresh;
+let availabilityRefresh: Promise<void> | undefined;
 let availabilityGeneration = 0;
 
-function placeholderOption(select, label) {
+function placeholderOption(select: HTMLSelectElement, label: string): void {
   const option = document.createElement("option");
   option.value = "";
   option.textContent = label;
@@ -28,7 +34,7 @@ function placeholderOption(select, label) {
   select.replaceChildren(option);
 }
 
-function populateReadyOptions(select, models, readyValues, preferredValue) {
+function populateReadyOptions(select: HTMLSelectElement, models: LanguageModel[], readyValues: Set<string>, preferredValue: string): string {
   const readyModels = models.filter((model) => readyValues.has(model.value));
   if (!readyModels.length) {
     placeholderOption(select, "No downloaded models");
@@ -40,12 +46,12 @@ function populateReadyOptions(select, models, readyValues, preferredValue) {
     option.textContent = model.name;
     return option;
   }));
-  const selectedValue = readyValues.has(preferredValue) ? preferredValue : readyModels[0].value;
+  const selectedValue = readyValues.has(preferredValue) ? preferredValue : readyModels[0]!.value;
   select.value = selectedValue;
   return selectedValue;
 }
 
-async function confirmedReady(check) {
+async function confirmedReady(check: () => Promise<ModelAvailability>): Promise<boolean> {
   try {
     return isReady(await check());
   } catch {
@@ -57,16 +63,16 @@ async function confirmedReady(check) {
   }
 }
 
-async function readyTranscriptionLanguages() {
-  const ready = new Set();
+async function readyTranscriptionLanguages(): Promise<Set<string>> {
+  const ready = new Set<string>();
   for (const model of TRANSCRIPTION_LANGUAGES) {
     if (await confirmedReady(() => modelChecker.transcription(model.value))) ready.add(model.value);
   }
   return ready;
 }
 
-async function readyTranslationLanguages(sourceLanguage) {
-  const ready = new Set();
+async function readyTranslationLanguages(sourceLanguage: string): Promise<Set<string>> {
+  const ready = new Set<string>();
   for (const model of TRANSLATION_LANGUAGES) {
     if (model.value === sourceLanguage) continue;
     if (await confirmedReady(() => modelChecker.translation(sourceLanguage, model.value))) {
@@ -76,7 +82,7 @@ async function readyTranslationLanguages(sourceLanguage) {
   return ready;
 }
 
-async function refreshTranslationOptions(sourceLanguage, preferredTarget, generation) {
+async function refreshTranslationOptions(sourceLanguage: string, preferredTarget: string, generation: number): Promise<void> {
   placeholderOption(sessionTranslationLanguage, "Checking downloaded models…");
   translationModelsAvailable = false;
   updateSessionControls();
@@ -92,7 +98,7 @@ async function refreshTranslationOptions(sourceLanguage, preferredTarget, genera
   if (!translationModelsAvailable) sessionTranslationEnabled.checked = false;
 }
 
-async function refreshReadyModels(settings) {
+async function refreshReadyModels(settings: CaptureSettings): Promise<void> {
   if (availabilityRefresh) return availabilityRefresh;
   const generation = ++availabilityGeneration;
   sessionSettingsLoaded = false;
@@ -140,7 +146,7 @@ async function refreshReadyModels(settings) {
 placeholderOption(sessionLanguage, "Checking downloaded models…");
 placeholderOption(sessionTranslationLanguage, "Checking downloaded models…");
 
-function currentSessionSettings() {
+function currentSessionSettings(): Partial<CaptureSettings> {
   return {
     language: sessionLanguage.value,
     translationEnabled: sessionTranslationEnabled.checked,
@@ -158,7 +164,7 @@ function updateSessionControls() {
   captureButton.disabled = captureState === "connecting" || !sessionSettingsLoaded;
 }
 
-async function renderSessionSettings(settings) {
+async function renderSessionSettings(settings: CaptureSettings): Promise<void> {
   await refreshReadyModels(settings);
 }
 
@@ -166,11 +172,11 @@ async function persistSessionSettings() {
   try {
     await window.captions.saveSessionSettings(currentSessionSettings());
   } catch (error) {
-    renderStatus({ state: "error", detail: `Could not update session settings: ${error.message}` });
+    renderStatus({ state: "error", detail: `Could not update session settings: ${messageFrom(error)}` });
   }
 }
 
-function renderStatus({ state, detail }) {
+function renderStatus({ state, detail }: CaptureStatus): void {
   captureState = state;
   capturing = state === "capturing" || state === "connecting";
   const label = {
@@ -203,7 +209,7 @@ captureButton.addEventListener("click", async () => {
       await window.captions.start(activeSettings);
     }
   } catch (error) {
-    renderStatus({ state: "error", detail: error.message });
+    renderStatus({ state: "error", detail: messageFrom(error) });
   } finally {
     captureButton.disabled = false;
   }
@@ -229,8 +235,8 @@ sessionTranslationEnabled.addEventListener("change", () => {
 });
 sessionTranslationLanguage.addEventListener("change", persistSessionSettings);
 
-window.captions.getSessionSettings().then(renderSessionSettings).catch((error) => {
-  renderStatus({ state: "error", detail: `Could not load session settings: ${error.message}` });
+window.captions.getSessionSettings().then(renderSessionSettings).catch((error: unknown) => {
+  renderStatus({ state: "error", detail: `Could not load session settings: ${messageFrom(error)}` });
 });
 window.captions.onSessionSettings((settings) => {
   void refreshReadyModels(settings);

@@ -1,7 +1,7 @@
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
-const projectRoot = path.resolve(__dirname, "..");
+const projectRoot = path.resolve(__dirname, "..", "..");
 const translationRoot = path.join(projectRoot, "local-translation");
 const bundleRoot = path.join(translationRoot, "CCueTranslationHelper.app");
 const contentsRoot = path.join(bundleRoot, "Contents");

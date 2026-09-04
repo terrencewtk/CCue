@@ -43,7 +43,7 @@ Paste each value directly into the matching GitHub environment secret, then clea
 2. Review the pull requests merged since the previous release and ensure each has an appropriate release-note label. Categories and exclusions are defined in `.github/release.yml`.
 3. In GitHub Actions, open **Release**, choose **Run workflow**, keep the branch set to `main`, and enter the exact version without a leading `v`.
 4. Approve the pending `release` environment deployment as `@terrencewtk`.
-5. Wait for source verification, signing, notarization, Gatekeeper assessment, checksums, and release publication to succeed.
+5. Wait for source verification, signing, notarization, Gatekeeper assessment, and release publication to succeed.
 6. Download the published DMG and perform a clean-machine smoke test before announcing the release.
 
 The workflow refuses non-owner actors, non-`main` refs, mismatched versions, missing credentials, and existing tags. It creates the `vMAJOR.MINOR.PATCH` tag only after all build and validation steps pass.

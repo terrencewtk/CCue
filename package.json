@@ -86,6 +86,9 @@
         "NSMicrophoneUsageDescription": "CCue may use audio input for future caption sources."
       }
     },
+    "dmg": {
+      "writeUpdateInfo": false
+    },
     "publish": [
       {
         "provider": "github",

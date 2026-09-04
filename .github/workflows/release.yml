@@ -95,6 +95,11 @@ jobs:
           test -f dist/latest-mac.yml
           compgen -G 'dist/*.dmg' >/dev/null
           compgen -G 'dist/*.zip' >/dev/null
+          compgen -G 'dist/*.zip.blockmap' >/dev/null
+          if compgen -G 'dist/*.dmg.blockmap' >/dev/null; then
+            echo "DMG blockmaps are not part of the release contract" >&2
+            exit 1
+          fi
 
           codesign --verify --deep --strict --verbose=2 "$app"
           signature="$(codesign -dv --verbose=4 "$app" 2>&1)"
@@ -113,18 +118,13 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$RUNNER_TEMP/ccue-release-check/CCue.app"
           spctl --assess --type execute --verbose=4 "$RUNNER_TEMP/ccue-release-check/CCue.app"
 
-      - name: Create checksums
-        run: |
-          set -euo pipefail
-          shasum -a 256 dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml > SHA256SUMS
-
       - name: Publish GitHub release
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
           gh release create "v$RELEASE_VERSION" \
-            dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml SHA256SUMS \
+            dist/*.dmg dist/*.zip dist/*.zip.blockmap dist/latest-mac.yml \
             --draft \
             --generate-notes \
             --title "CCue $RELEASE_VERSION" \

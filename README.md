@@ -42,7 +42,7 @@ Translation itself requires macOS 15 or later, but the transcription pipeline ma
 2. Open the DMG and drag CCue to Applications.
 3. Start CCue and complete the on-device model setup. macOS will ask for system-audio capture permission when captions start.
 
-The initial distribution supports Apple silicon (`arm64`) only. Every official artifact is signed with a Developer ID certificate, notarized by Apple, and accompanied by `SHA256SUMS` in its GitHub release.
+The initial distribution supports Apple silicon (`arm64`) only. Every official build is signed with a Developer ID certificate and notarized by Apple. GitHub displays the SHA-256 digest for each uploaded release asset.
 
 ## Build from source
 
@@ -174,7 +174,7 @@ Create DMG and ZIP artifacts:
 npm run dist
 ```
 
-Official releases are created only by the repository owner through the manually dispatched [release workflow](.github/workflows/release.yml). It verifies the source, builds with the hardened runtime, signs every executable with the same Developer ID identity, notarizes the app with Apple, validates the result, and publishes the DMG, ZIP, update metadata, blockmaps, and checksums.
+Official releases are created only by the repository owner through the manually dispatched [release workflow](.github/workflows/release.yml). It verifies the source, builds with the hardened runtime, signs every executable with the same Developer ID identity, notarizes the app with Apple, validates the result, and publishes the DMG plus the ZIP metadata required for automatic updates.
 
 Versions follow [Semantic Versioning](https://semver.org/) and use `vMAJOR.MINOR.PATCH` Git tags. See [RELEASING.md](RELEASING.md) for the owner-only release procedure and credential setup.
 

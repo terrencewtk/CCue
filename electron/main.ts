@@ -142,6 +142,12 @@ void app.whenReady().then(() => {
     const nextSettings = normalizeCaptureSettings(settings);
     applyGlobalShortcut(nextSettings.globalShortcut);
     writeSettings(nextSettings);
+    // Overlay line count has no session-level control, so keep it in sync with
+    // the persistent setting for the next capture session.
+    sessionSettings = {
+      ...sessionSettings,
+      overlayLineCount: nextSettings.overlayLineCount
+    };
     return nextSettings;
   });
   ipcMain.handle("session-settings:get", () => sessionSettings);

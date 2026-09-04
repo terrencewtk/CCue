@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'" />
+    <title>CCue Update</title>
+    <link rel="stylesheet" href="design-system.css" />
+    <link rel="stylesheet" href="updater.css" />
+  </head>
+  <body>
+    <div class="titlebar-drag-region" aria-hidden="true"></div>
+    <main class="update-shell">
+      <header class="update-header">
+        <img src="../assets/ccue-icon-master.png" alt="" />
+        <div>
+          <h1>A new version of CCue is available!</h1>
+          <p>CCue <strong id="availableVersion">—</strong> is now available—you have <span id="currentVersion">—</span>.</p>
+        </div>
+      </header>
+
+      <section class="release-card" aria-labelledby="releaseHeading">
+        <h2 id="releaseHeading">What’s New in CCue <span id="releaseVersion">—</span></h2>
+        <div id="releaseNotes" class="release-notes"></div>
+      </section>
+
+      <div id="progressSection" class="progress-section hidden" role="status" aria-live="polite">
+        <div class="progress-copy"><span id="progressLabel">Downloading update…</span><span id="progressPercent">0%</span></div>
+        <progress id="progress" max="100" value="0"></progress>
+      </div>
+      <p id="errorMessage" class="error-message hidden" role="alert"></p>
+
+      <label class="automatic-option">
+        <input id="automaticDownload" type="checkbox" />
+        <span>Automatically download and install updates in the future</span>
+      </label>
+
+      <footer>
+        <button id="skipButton" class="button secondary" type="button">Skip This Version</button>
+        <span class="footer-spacer"></span>
+        <button id="laterButton" class="button secondary" type="button">Remind Me Later</button>
+        <button id="installButton" class="button primary" type="button">Install Update</button>
+      </footer>
+    </main>
+    <script src="updater.js"></script>
+  </body>
+</html>

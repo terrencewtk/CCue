@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (must match package.json, for example 0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.actor == github.repository_owner && github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 60
+    environment: release
+    permissions:
+      contents: write
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate release request
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "version must be a stable semantic version such as 0.1.0" >&2
+            exit 1
+          }
+          package_version="$(node -p "require('./package.json').version")"
+          [[ "$RELEASE_VERSION" == "$package_version" ]] || {
+            echo "requested version $RELEASE_VERSION does not match package.json ($package_version)" >&2
+            exit 1
+          }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "tag v$RELEASE_VERSION already exists" >&2
+            exit 1
+          fi
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_API_KEY_BASE64 APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_TEAM_ID; do
+            [[ -n "${!name:-}" ]] || {
+              echo "release environment secret $name is not configured" >&2
+              exit 1
+            }
+          done
+
+      - name: Prepare notarization key
+        run: |
+          set -euo pipefail
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s' "$APPLE_API_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify source
+        run: npm run verify
+
+      - name: Build, sign, and notarize
+        run: npm run dist:release
+
+      - name: Verify signed artifacts
+        run: |
+          set -euo pipefail
+          app="dist/mac-arm64/CCue.app"
+          test -d "$app"
+          test -f dist/latest-mac.yml
+          compgen -G 'dist/*.dmg' >/dev/null
+          compgen -G 'dist/*.zip' >/dev/null
+
+          codesign --verify --deep --strict --verbose=2 "$app"
+          signature="$(codesign -dv --verbose=4 "$app" 2>&1)"
+          grep -F "Authority=Developer ID Application:" <<<"$signature"
+          grep -F "TeamIdentifier=$APPLE_TEAM_ID" <<<"$signature"
+
+          codesign --verify --strict --verbose=2 "$app/Contents/Resources/bin/caption-audio-sidecar"
+          codesign --verify --strict --verbose=2 "$app/Contents/Resources/bin/caption-local-asr"
+          codesign --verify --deep --strict --verbose=2 "$app/Contents/Resources/CCueTranslationHelper.app"
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
+
+          for dmg in dist/*.dmg; do hdiutil verify "$dmg"; done
+          archive="$(find dist -maxdepth 1 -name '*.zip' -print -quit)"
+          unzip -q "$archive" -d "$RUNNER_TEMP/ccue-release-check"
+          codesign --verify --deep --strict --verbose=2 "$RUNNER_TEMP/ccue-release-check/CCue.app"
+          spctl --assess --type execute --verbose=4 "$RUNNER_TEMP/ccue-release-check/CCue.app"
+
+      - name: Create checksums
+        run: |
+          set -euo pipefail
+          shasum -a 256 dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml > SHA256SUMS
+
+      - name: Publish GitHub release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "v$RELEASE_VERSION" \
+            dist/*.dmg dist/*.zip dist/*.blockmap dist/latest-mac.yml SHA256SUMS \
+            --draft \
+            --generate-notes \
+            --title "CCue $RELEASE_VERSION" \
+            --target "$GITHUB_SHA"
+          gh release edit "v$RELEASE_VERSION" --draft=false --latest

@@ -1,0 +1,16 @@
+[package]
+name = "caption-audio-sidecar"
+version = "0.1.0"
+edition = "2021"
+description = "CoreAudio system-audio capture sidecar for CCue"
+license = "GPL-3.0-only"
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+base64 = "0.22"
+cidre = "0.11.3"
+ringbuf = "0.4.8"
+rubato = "4.0.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -1,0 +1,84 @@
+body { min-width: 640px; min-height: 470px; }
+
+.update-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 20px;
+  padding: 66px 32px 26px;
+  background: var(--color-canvas);
+}
+
+.update-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.update-header img {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  border-radius: 18px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .14);
+}
+.update-header h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
+.update-header p { margin: 10px 0 0; color: var(--color-text-control); font-size: 15px; }
+
+.release-card {
+  min-height: 190px;
+  flex: 1;
+  overflow: auto;
+  padding: 18px 20px;
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .025);
+  user-select: text;
+}
+.release-card h2 { margin: 0 0 14px; padding: 0; font-size: 19px; }
+.release-notes {
+  color: var(--color-text-control);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.release-notes p { margin: 0 0 9px; }
+.release-notes ul { margin: 0 0 9px; padding-left: 23px; }
+.release-notes li + li { margin-top: 4px; }
+
+.automatic-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.automatic-option input { width: 17px; height: 17px; margin: 0; accent-color: var(--color-accent); }
+
+.progress-section { display: grid; gap: 7px; }
+.progress-copy { display: flex; justify-content: space-between; color: var(--color-text-muted); font-size: 12px; }
+progress { width: 100%; height: 7px; accent-color: var(--color-accent); }
+.error-message { margin: -7px 0; color: var(--color-danger); font-size: 12px; }
+
+footer { display: flex; align-items: center; gap: 12px; }
+.footer-spacer { flex: 1; }
+.button {
+  min-width: 144px;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 19px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.button.secondary {
+  border: 1px solid rgba(0, 0, 0, .06);
+  background: #eeeeee;
+  color: var(--color-text-control);
+}
+.button.secondary:hover { background: #e5e5e5; }
+.button.primary {
+  border: 1px solid var(--color-accent-border);
+  background: var(--color-accent);
+  color: #fff;
+}
+.button.primary:hover { background: var(--color-accent-hover); }
+.button:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--color-focus-ring); }
+.button:disabled { cursor: default; }

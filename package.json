@@ -1,0 +1,102 @@
+{
+  "name": "ccue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private, on-device system-audio captions and translation for macOS",
+  "author": "Terrence Wong <wongtk1997@gmail.com>",
+  "homepage": "https://github.com/terrencewtk/ccue#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/terrencewtk/ccue.git"
+  },
+  "license": "GPL-3.0-only",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "build/electron/main.js",
+  "scripts": {
+    "electron:clean": "node -e \"require('node:fs').rmSync('build/electron', { recursive: true, force: true })\"",
+    "electron:build": "npm run electron:clean && tsc --project tsconfig.json",
+    "electron:check": "tsc --project tsconfig.json --noEmit",
+    "native:build": "cargo build --manifest-path native/Cargo.toml --release",
+    "local-asr:build": "swift build --package-path local-asr -c release",
+    "local-asr:test": "swift test --package-path local-asr",
+    "local-translation:build": "swift build --package-path local-translation -c release && node scripts/package-local-translation-helper.cjs",
+    "local-translation:check": "swift build --package-path local-translation",
+    "native:check": "cargo fmt --manifest-path native/Cargo.toml -- --check && cargo test --manifest-path native/Cargo.toml",
+    "renderer:check": "node --check renderer/control.js && node --check renderer/model-availability.js && node --check renderer/overlay.js && node --check renderer/shortcut.js && node --check renderer/settings.js && node --check renderer/onboarding.js && node --check renderer/updater.js",
+    "test": "npm run electron:build && node --test",
+    "check": "npm run electron:check && npm run renderer:check",
+    "verify": "npm run check && npm test && npm run native:check && npm run local-asr:test && npm run local-translation:check",
+    "start": "npm run native:build && npm run local-asr:build && npm run local-translation:build && npm run electron:build && electron .",
+    "start:electron": "npm run electron:build && electron .",
+    "updater:preview": "npm run electron:build && CCUE_UPDATER_PREVIEW=1 electron .",
+    "build": "npm run native:build && npm run local-asr:build && npm run local-translation:build && npm run electron:build && electron-builder --mac dir",
+    "dist": "npm run native:build && npm run local-asr:build && npm run local-translation:build && npm run electron:build && electron-builder --mac dmg zip",
+    "dist:release": "npm run native:build && npm run local-asr:build && npm run local-translation:build && npm run electron:build && electron-builder --mac dmg zip --publish never --config.mac.forceCodeSigning=true"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "electron": "39.8.10",
+    "electron-builder": "26.15.3",
+    "typescript": "7.0.2"
+  },
+  "build": {
+    "appId": "com.terrencewtk.ccue",
+    "productName": "CCue",
+    "files": [
+      "build/electron/**/*",
+      "renderer/**/*",
+      "assets/ccue-icon-master.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "native/target/release/caption-audio-sidecar",
+        "to": "bin/caption-audio-sidecar"
+      },
+      {
+        "from": "local-asr/.build/release/caption-local-asr",
+        "to": "bin/caption-local-asr"
+      },
+      {
+        "from": "local-translation/CCueTranslationHelper.app",
+        "to": "CCueTranslationHelper.app"
+      }
+    ],
+    "mac": {
+      "icon": "assets/ccue.icon",
+      "category": "public.app-category.utilities",
+      "minimumSystemVersion": "26.0",
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.inherit.plist",
+      "notarize": true,
+      "binaries": [
+        "Contents/Resources/bin/caption-audio-sidecar",
+        "Contents/Resources/bin/caption-local-asr",
+        "Contents/Resources/CCueTranslationHelper.app/Contents/MacOS/caption-local-translation"
+      ],
+      "extendInfo": {
+        "NSAudioCaptureUsageDescription": "CCue captures system audio to generate captions on this Mac.",
+        "NSMicrophoneUsageDescription": "CCue may use audio input for future caption sources."
+      }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "terrencewtk",
+        "repo": "ccue",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.8.15",
+    "fast-uri": "3.1.6",
+    "js-yaml": "4.3.1"
+  }
+}

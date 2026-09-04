@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>CCue Settings</title>
+    <link rel="stylesheet" href="design-system.css" />
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <main class="settings-shell">
+      <div class="titlebar-drag-region" aria-hidden="true"></div>
+      <aside class="sidebar">
+        <nav aria-label="Settings categories">
+          <button class="nav-button active" type="button" data-panel="general">
+            <span class="nav-icon" aria-hidden="true">⚙︎</span>
+            <span>General</span>
+          </button>
+          <button class="nav-button" type="button" data-panel="model">
+            <span class="nav-icon" aria-hidden="true">◈</span>
+            <span>Model</span>
+          </button>
+          <button class="nav-button" type="button" data-panel="about">
+            <span class="nav-icon" aria-hidden="true">ⓘ</span>
+            <span>About</span>
+          </button>
+        </nav>
+      </aside>
+
+      <div class="content-pane">
+        <p id="notice" class="notice hidden" role="status"></p>
+
+        <section id="generalPanel" class="settings-panel active" data-panel-content="general" aria-labelledby="generalHeading">
+          <header class="panel-header">
+            <h1 id="generalHeading">General</h1>
+            <p>Configure private, on-device captions and translations.</p>
+          </header>
+
+          <form id="settingsForm">
+            <h2>Overlay</h2>
+            <div class="settings-group">
+              <label class="setting-row" for="overlayLineCount">
+                <span class="setting-copy">
+                  <strong>Caption lines</strong>
+                  <small>The maximum number of caption rows shown in the overlay.</small>
+                </span>
+                <select id="overlayLineCount" name="overlayLineCount">
+                  <option value="1">1 line</option>
+                  <option value="2">2 lines</option>
+                  <option value="3">3 lines</option>
+                  <option value="4">4 lines</option>
+                  <option value="5">5 lines</option>
+                  <option value="6">6 lines</option>
+                  <option value="7">7 lines</option>
+                  <option value="8">8 lines</option>
+                  <option value="9">9 lines</option>
+                  <option value="10">10 lines</option>
+                </select>
+              </label>
+            </div>
+
+            <h2>Keyboard shortcut</h2>
+            <div class="settings-group">
+              <div class="setting-row shortcut-setting">
+                <span class="setting-copy">
+                  <strong>Start or stop captions</strong>
+                  <small>Works from any app while CCue is running.</small>
+                </span>
+                <span class="shortcut-actions">
+                  <button id="shortcutRecorder" class="shortcut-recorder" type="button" aria-label="Record a new global shortcut">⌘⇧L</button>
+                  <button id="shortcutRemove" class="shortcut-remove" type="button">Disable</button>
+                </span>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section id="modelPanel" class="settings-panel" data-panel-content="model" aria-labelledby="modelHeading">
+          <header class="panel-header">
+            <h1 id="modelHeading">Model</h1>
+            <p>Choose and manage the on-device models used for captions and translations.</p>
+          </header>
+
+          <form id="modelSettingsForm">
+            <h2>Transcription</h2>
+            <p class="section-description">Choose the spoken language and manage its offline transcription model.</p>
+            <div id="transcriptionModels" class="settings-group model-list" role="radiogroup" aria-label="Transcription language models"></div>
+
+            <h2>Translation</h2>
+            <div class="settings-group">
+              <label class="setting-row" for="translationEnabled">
+                <span class="setting-copy">
+                  <strong>Translate captions</strong>
+                  <small>Translate locally with Apple's on-device language model.</small>
+                </span>
+                <span class="switch">
+                  <input id="translationEnabled" name="translationEnabled" type="checkbox" checked />
+                  <span class="switch-track"></span>
+                </span>
+              </label>
+
+            </div>
+            <p class="section-description translation-description">Choose the caption translation language. Availability is shown for the selected spoken language.</p>
+            <div id="translationModels" class="settings-group model-list" role="radiogroup" aria-label="Translation language models"></div>
+            <p class="provider-note">Transcription and translation stay on this Mac. Apple transcription requires macOS 26; translation requires macOS 15.</p>
+          </form>
+        </section>
+
+        <section id="aboutPanel" class="settings-panel" data-panel-content="about" aria-labelledby="aboutHeading">
+          <header class="panel-header">
+            <h1 id="aboutHeading">About</h1>
+            <p>Live system-audio captions for macOS.</p>
+          </header>
+          <div class="about-card settings-group">
+            <img class="app-mark" src="../assets/ccue-icon-master.png" alt="CCue app icon" />
+            <div>
+              <strong>CCue</strong>
+              <p>Version 0.1.0</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="model-availability.js"></script>
+    <script src="shortcut.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <title>Caption Overlay</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <div id="captionWrap" class="caption-wrap hidden" aria-live="assertive">
+      <button id="stopButton" class="stop-button" type="button" aria-label="Stop captions" title="Stop captions">
+        <span aria-hidden="true"></span>
+      </button>
+      <div id="captionLines" class="caption-lines"></div>
+    </div>
+    <script src="overlay.js"></script>
+  </body>
+</html>

@@ -1,0 +1,224 @@
+/*
+ * CCue design system
+ *
+ * Theme values live in :root. Shared component primitives below consume only
+ * these tokens so the control and settings windows stay visually consistent.
+ */
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+
+  --color-text-primary: #171918;
+  --color-text-control: #2b2e2c;
+  --color-text-secondary: #6d716f;
+  --color-text-muted: #747875;
+  --color-text-subtle: #858986;
+  --color-canvas: #fbfbfb;
+  --color-sidebar-start: rgba(238, 239, 238, .97);
+  --color-sidebar-end: rgba(227, 229, 227, .94);
+  --color-surface: #fff;
+  --color-control-surface: #f7f7f7;
+  --color-control-border: #d1d3d2;
+  --color-separator: #eceeed;
+  --color-border-subtle: rgba(0, 0, 0, .055);
+  --color-accent: #1f62fc;
+  --color-accent-hover: #1854db;
+  --color-accent-border: #1854db;
+  --color-accent-soft: #eef3ff;
+  --color-accent-soft-hover: #e4ecff;
+  --color-focus-border: #1f62fc;
+  --color-focus-ring: rgba(31, 98, 252, .18);
+  --color-focus-ring-soft: rgba(31, 98, 252, .14);
+  --color-switch-off: #c9ccca;
+  --color-danger: #b64639;
+  --color-danger-hover: #9e382f;
+  --color-danger-border: #a33b31;
+  --color-brand-start: #1b8864;
+  --color-brand-end: #115840;
+  --color-success-soft: #eaf5f0;
+  --color-success-text: #316c57;
+
+  --font-size-caption: 10px;
+  --font-size-body: 11px;
+  --font-size-subtitle: 12px;
+  --font-size-label: 13px;
+  --font-size-title: 26px;
+  --font-weight-label: 590;
+  --font-weight-section: 650;
+  --font-weight-title: 720;
+
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 5px;
+  --space-4: 9px;
+  --space-5: 10px;
+  --space-6: 13px;
+  --space-7: 16px;
+  --space-8: 24px;
+  --space-9: 26px;
+  --space-10: 32px;
+  --page-padding-top: 62px;
+  --page-padding-inline: 40px;
+
+  --radius-control: 7px;
+  --radius-button: 8px;
+  --radius-card: 13px;
+  --radius-pill: 999px;
+  --control-height: 30px;
+  --control-width: 190px;
+  --row-min-height: 68px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .025);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, .055);
+  --shadow-button: 0 1px 1px rgba(0, 0, 0, .06);
+  --shadow-thumb: 0 1px 3px rgba(0, 0, 0, .22);
+  --transition-fast: .16s ease;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--color-canvas);
+  color: var(--color-text-primary);
+  user-select: none;
+}
+
+button,
+input,
+select { font: inherit; }
+
+button { color: inherit; }
+button:disabled { opacity: .5; cursor: wait; }
+
+.hidden { display: none !important; }
+
+.titlebar-drag-region {
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 56px;
+  -webkit-app-region: drag;
+}
+
+.panel-header { margin-bottom: var(--space-10); }
+.panel-header h1 {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-title);
+  letter-spacing: -.02em;
+}
+.panel-header p {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-subtitle);
+}
+
+h2 {
+  margin: var(--space-9) 0 var(--space-4);
+  padding-left: var(--space-1);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-section);
+}
+
+.settings-group {
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+.setting-row {
+  display: flex;
+  min-height: var(--row-min-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-7);
+  color: inherit;
+  cursor: default;
+}
+.setting-row + .setting-row { border-top: 1px solid var(--color-separator); }
+
+.setting-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+.setting-copy strong {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+}
+.setting-copy small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+}
+
+select {
+  flex: 0 0 auto;
+  width: var(--control-width);
+  height: var(--control-height);
+  padding: 0 28px 0 var(--space-5);
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  outline: 0;
+  background: var(--color-control-surface);
+  color: var(--color-text-control);
+  font-size: var(--font-size-body);
+}
+select:focus {
+  border-color: var(--color-focus-border);
+  box-shadow: 0 0 0 3px var(--color-focus-ring-soft);
+}
+select:disabled { opacity: .45; }
+
+.switch {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 20px;
+}
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-switch-off);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .07);
+  transition: background var(--transition-fast);
+}
+.switch-track::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-thumb);
+  content: "";
+  transition: transform var(--transition-fast);
+}
+.switch input:checked + .switch-track { background: var(--color-accent); }
+.switch input:checked + .switch-track::after { transform: translateX(14px); }
+.switch input:focus-visible + .switch-track { box-shadow: 0 0 0 3px var(--color-focus-ring); }
+.switch input:disabled + .switch-track { opacity: .45; }
+
+.provider-note {
+  margin: var(--space-5) var(--space-2) 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+}

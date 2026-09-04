@@ -1,0 +1,20 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #fff;
+  letter-spacing: 0;
+}
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; user-select: none; }
+body { position: relative; }
+.caption-wrap { position: absolute; left: 50%; bottom: 12px; display: flex; flex-direction: column; width: min(900px, calc(100% - 24px)); min-height: 58px; max-height: calc(100% - 24px); overflow: hidden; transform: translateX(-50%); padding: 13px 56px 15px 20px; border-radius: 8px; background: rgba(9, 12, 11, .86); box-shadow: 0 4px 20px rgba(0, 0, 0, .28); text-align: center; cursor: move; -webkit-app-region: drag; }
+.caption-lines { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 8px; overflow-y: hidden; }
+.caption-lines.is-overflowing { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px); mask-image: linear-gradient(to bottom, transparent, #000 24px); }
+.caption-line p { margin: 0; overflow-wrap: break-word; word-break: normal; line-break: strict; text-wrap: pretty; }
+.transcript-text { color: rgba(255,255,255,.78); font-size: 20px; font-weight: 400; line-height: 1.32; }
+.translation-text { margin-top: 2px !important; color: #fff; font-size: 17px; font-weight: 400; line-height: 1.28; }
+.stop-button { position: absolute; z-index: 1; top: 10px; right: 10px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid rgba(255, 255, 255, .24); border-radius: 50%; color: #fff; background: rgba(20, 22, 21, .92); cursor: pointer; -webkit-app-region: no-drag; }
+.stop-button:hover { background: #b64235; border-color: #d96b5e; }
+.stop-button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.stop-button:disabled { opacity: .55; cursor: default; }
+.stop-button span { width: 10px; height: 10px; border-radius: 2px; background: currentColor; }
+.hidden { display: none; }

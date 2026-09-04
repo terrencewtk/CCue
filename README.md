@@ -9,7 +9,7 @@ Private, real-time captions for your Mac's system audio.
 
 CCue is a free and open-source macOS app that turns the audio playing on your Mac into an always-on-top caption overlay. Transcription uses Apple's on-device Speech framework, and optional translation uses Apple's on-device Translation framework. There is no account, subscription, hosted backend, or usage allowance.
 
-![CCue control window](assets/ccue-control.png)
+![CCue live captions demo](docs/screen_recording.gif)
 
 ## Highlights
 

@@ -20,11 +20,6 @@ export class CaptionService {
     this.debugStartedAt = 0;
   }
 
-  setMaxRows(maxRows: number): void {
-    this.maxRows = maxRows;
-    this.render();
-  }
-
   clear(): void {
     this.records = [];
     this.evictedRowIds.clear();

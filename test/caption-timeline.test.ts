@@ -295,21 +295,3 @@ test("uses the configured overlay line count", () => {
     "five."
   ]);
 });
-
-test("applies a changed overlay line count to existing caption records", () => {
-  const records: CaptionRecord[] = [];
-  upsertDraft(records, {
-    id: 1,
-    startMs: 0,
-    endMs: 6_000
-  }, "one. two. three.");
-
-  assert.deepEqual(renderTimeline(records, undefined, 3).rows.map((row) => row.text), [
-    "one.",
-    "two.",
-    "three."
-  ]);
-  assert.deepEqual(renderTimeline(records, undefined, 1).rows.map((row) => row.text), [
-    "three."
-  ]);
-});

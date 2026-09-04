@@ -1,6 +1,6 @@
 {
   "name": "ccue",
-  "version": "0.0.1",
+  "version": "0.1.1",
   "private": true,
   "description": "Private, on-device system-audio captions and translation for macOS",
   "author": "Terrence Wong <wongtk1997@gmail.com>",

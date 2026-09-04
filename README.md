@@ -17,7 +17,7 @@ CCue is a free and open-source macOS app that turns the audio playing on your Ma
 - **Captions any system audio** — use CCue with videos, meetings, podcasts, streams, and other apps.
 - **Optional live translation** — display the original speech and its translation together.
 - **Unobtrusive overlay** — captions stay above other windows and remain visible in full screen.
-- **Configurable history** — show between 1 and 10 caption rows.
+- **Configurable history** — show between 1 and 3 caption rows.
 - **Downloadable language models** — prepare and manage Apple language models from onboarding or Settings.
 - **Configurable global shortcut** — start or stop captions from any app, or disable the shortcut entirely.
 

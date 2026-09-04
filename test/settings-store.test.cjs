@@ -31,13 +31,23 @@ test("persists the configured overlay line count", () => {
       language: "ja-JP",
       translationEnabled: true,
       translationLanguage: "en-US",
-      overlayLineCount: 7
+      overlayLineCount: 2
     });
 
-    assert.equal(readSettings().overlayLineCount, 7);
+    assert.equal(readSettings().overlayLineCount, 2);
     assert.equal(JSON.parse(
       fs.readFileSync(path.join(userDataPath, "settings.json"), "utf8")
-    ).overlayLineCount, 7);
+    ).overlayLineCount, 2);
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});
+
+test("clamps the overlay line count to three", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    const { normalizeCaptureSettings } = loadSettingsStore(userDataPath);
+    assert.equal(normalizeCaptureSettings({ overlayLineCount: 10 }).overlayLineCount, 3);
   } finally {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   }

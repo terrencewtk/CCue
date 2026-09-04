@@ -16,7 +16,7 @@ const translationLanguages = new Set<TranslationLanguage>([
 ]);
 const DEFAULT_OVERLAY_LINE_COUNT = 3;
 const MIN_OVERLAY_LINE_COUNT = 1;
-const MAX_OVERLAY_LINE_COUNT = 10;
+const MAX_OVERLAY_LINE_COUNT = 3;
 export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+L";
 const shortcutModifiers = new Set(["CommandOrControl", "Command", "Control", "Alt", "Shift"]);
 

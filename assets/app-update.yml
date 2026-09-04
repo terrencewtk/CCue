@@ -1,0 +1,4 @@
+provider: github
+owner: terrencewtk
+repo: ccue
+updaterCacheDirName: ccue-updater

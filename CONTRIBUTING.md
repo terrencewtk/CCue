@@ -24,6 +24,15 @@ Run the complete app with `npm start`. During Electron-only iteration, reuse pre
 - Do not commit build output, local model data, debug traces, credentials, or captured audio/transcripts.
 - Preserve the offline-only architecture unless a proposal has been discussed first.
 
+Release notes are generated from merged pull requests and grouped by labels. Maintainers should apply the most specific relevant label:
+
+- `security` for security-related changes.
+- `enhancement` for new user-facing capabilities.
+- `accessibility` or `performance` for improvements to existing behavior.
+- `bug` for corrections.
+- `dependencies` or `maintenance` for internal upkeep.
+- `documentation` or `release-notes:skip` for changes that should not appear in release notes.
+
 The CI workflow must pass before a change is merged. Official tags and releases are created only by the repository owner through the protected manual release workflow.
 
 Security vulnerabilities do not belong in public issues. Follow [SECURITY.md](SECURITY.md) to report them privately.

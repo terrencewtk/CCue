@@ -1,13 +1,21 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const Module = require("node:module");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import Module from "node:module";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
 
-function loadSettingsStore(userDataPath) {
-  const originalLoad = Module._load;
-  Module._load = function load(request, parent, isMain) {
+type CommonJsModule = typeof Module & {
+  _load(request: string, parent: NodeModule | undefined, isMain: boolean): unknown;
+};
+
+const commonJsModule = Module as CommonJsModule;
+
+function loadSettingsStore(
+  userDataPath: string
+): typeof import("../electron/settings/settings-store") {
+  const originalLoad = commonJsModule._load;
+  commonJsModule._load = function load(request, parent, isMain) {
     if (request === "electron") {
       return { app: { getPath: () => userDataPath } };
     }
@@ -15,11 +23,11 @@ function loadSettingsStore(userDataPath) {
   };
 
   try {
-    const modulePath = require.resolve("../build/electron/settings/settings-store.js");
+    const modulePath = require.resolve("../electron/settings/settings-store.js");
     delete require.cache[modulePath];
-    return require(modulePath);
+    return require(modulePath) as typeof import("../electron/settings/settings-store");
   } finally {
-    Module._load = originalLoad;
+    commonJsModule._load = originalLoad;
   }
 }
 

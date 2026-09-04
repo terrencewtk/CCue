@@ -4,6 +4,7 @@
 
 - **Offline-only:** Captions use Apple SpeechTranscriber and optional translation uses Apple's Translation framework. The app has no hosted backend, authentication, billing, entitlement, or metering path.
 - **Electron plus native helpers:** Electron owns windows, settings, and caption state. Rust owns CoreAudio capture, while separate Swift helpers own transcription and translation.
+- **TypeScript for application code:** Electron, renderer UI, tests, and Node.js build helpers use strict TypeScript. Renderer sources compile to native browser ES modules without adding a frontend framework or runtime dependency.
 - **NDJSON over stdio:** Native helpers exchange commands and events with Electron as newline-delimited JSON.
 - **macOS only:** System-audio capture and the selected on-device frameworks are macOS-specific.
 

@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "types": [],
+    "rootDir": ".",
+    "outDir": "../build/renderer"
+  },
+  "include": ["./**/*.ts", "./**/*.d.ts"]
+}

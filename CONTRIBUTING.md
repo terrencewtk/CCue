@@ -39,10 +39,11 @@ Security vulnerabilities do not belong in public issues. Follow [SECURITY.md](SE
 
 ## Code structure
 
-- `electron/` contains the typed main process, preload bridge, and application services.
-- `renderer/` contains dependency-free window UI.
+- `electron/` contains the TypeScript main process, preload bridge, and application services.
+- `renderer/` contains dependency-free TypeScript window UI compiled as native browser ES modules.
+- `scripts/` contains TypeScript build and packaging helpers.
 - `native/` contains the Rust CoreAudio sidecar.
 - `local-asr/` and `local-translation/` contain the Swift helpers.
-- `test/` contains the Node test suite.
+- `test/` contains the TypeScript Node.js test suite.
 
 Architecture decisions and known production gaps are documented in [DECISIONS.md](DECISIONS.md).

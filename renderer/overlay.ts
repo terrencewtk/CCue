@@ -1,14 +1,15 @@
-const wrap = document.querySelector("#captionWrap");
-const captionLines = document.querySelector("#captionLines");
-const stopButton = document.querySelector("#stopButton");
+const wrap = document.querySelector<HTMLElement>("#captionWrap")!;
+const captionLines = document.querySelector<HTMLElement>("#captionLines")!;
+const stopButton = document.querySelector<HTMLButtonElement>("#stopButton")!;
 
 let active = false;
-let animationFrame = null;
+let animationFrame: number | null = null;
 let animationIntervalMs = 20;
 let lastAnimationTime = 0;
-let targetCaption = { rows: [], units: [] };
+interface TargetRow { text: string; translation: string; animate: boolean; units: string[]; }
+let targetCaption: { rows: TargetRow[]; units: string[] } = { rows: [], units: [] };
 let visibleUnitCount = 0;
-let resizeFrame = null;
+let resizeFrame: number | null = null;
 let lastRequestedOverlayHeight = 0;
 
 const OVERLAY_VERTICAL_GUTTER = 24;
@@ -17,8 +18,8 @@ const CAPTION_MIN_HEIGHT = 58;
 const wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-function revealUnits(text) {
-  const units = [];
+function revealUnits(text: string): string[] {
+  const units: string[] = [];
   let leading = "";
 
   for (const { segment, isWordLike } of wordSegmenter.segment(text)) {
@@ -36,14 +37,14 @@ function revealUnits(text) {
   return units;
 }
 
-function commonPrefixLength(left, right) {
+function commonPrefixLength(left: string[], right: string[]): number {
   const limit = Math.min(left.length, right.length);
   let length = 0;
   while (length < limit && left[length] === right[length]) length += 1;
   return length;
 }
 
-function suffixPrefixLength(left, right) {
+function suffixPrefixLength(left: string[], right: string[]): number {
   const limit = Math.min(left.length, right.length);
   for (let length = limit; length > 0; length -= 1) {
     let matches = true;
@@ -58,7 +59,7 @@ function suffixPrefixLength(left, right) {
   return 0;
 }
 
-function captionTarget(finals, partial, rows) {
+function captionTarget(finals: string[], partial: string, rows?: CaptionRow[]): { rows: TargetRow[]; units: string[] } {
   const sourceRows = rows?.length
     ? rows
     : [...finals, partial]
@@ -126,7 +127,7 @@ function scheduleOverlayResize() {
   });
 }
 
-function animateCaption(timestamp) {
+function animateCaption(timestamp: number): void {
   if (!lastAnimationTime) lastAnimationTime = timestamp;
   const elapsed = timestamp - lastAnimationTime;
   const increment = Math.floor(elapsed / animationIntervalMs);
@@ -146,7 +147,7 @@ function animateCaption(timestamp) {
   }
 }
 
-function setCaption(finals, partial, rows) {
+function setCaption(finals: string[], partial: string, rows?: CaptionRow[]): void {
   const previous = targetCaption;
   const next = captionTarget(finals, partial, rows);
   const prefix = commonPrefixLength(previous.units, next.units);

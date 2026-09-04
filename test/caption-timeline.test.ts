@@ -1,6 +1,7 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const {
+import test from "node:test";
+import assert from "node:assert/strict";
+import type { CaptionRecord } from "../electron/shared/types";
+import {
   commitQuality,
   latestQualityEnd,
   replaceDraft,
@@ -8,10 +9,10 @@ const {
   segmentDraftSentences,
   setQualityTranslation,
   upsertDraft
-} = require("../build/electron/captions/caption-timeline.js");
+} from "../electron/captions/caption-timeline";
 
 test("replaces a local partial and keeps its translation paired", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   replaceDraft(records, { id: 1, startMs: 100, endMs: 500 }, "おは", "Good");
   replaceDraft(records, { id: 1, startMs: 100, endMs: 800 }, "おはよう", "Good morning");
   assert.deepEqual(renderTimeline(records).rows, [{
@@ -22,7 +23,7 @@ test("replaces a local partial and keeps its translation paired", () => {
 });
 
 test("retains the previous draft translation until its replacement arrives", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   replaceDraft(records, { id: 1, startMs: 100, endMs: 500 }, "今日は", "今天");
   replaceDraft(records, { id: 1, startMs: 100, endMs: 800 }, "今日は晴れです", "", true);
   assert.deepEqual(renderTimeline(records).rows, [{
@@ -32,11 +33,11 @@ test("retains the previous draft translation until its replacement arrives", () 
   }]);
 
   replaceDraft(records, { id: 1, startMs: 100, endMs: 800 }, "今日は晴れです", "今天是晴天");
-  assert.equal(renderTimeline(records).rows[0].translation, "今天是晴天");
+  assert.equal(renderTimeline(records).rows[0]?.translation, "今天是晴天");
 });
 
 test("shows the next local partial after a finalized utterance", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   replaceDraft(records, { id: 1, startMs: 0, endMs: 800 }, "最初", "First");
   commitQuality(records, {
     id: "apple-speech-1",
@@ -66,7 +67,7 @@ test("segments unfinished text at English and Chinese full stops", () => {
 });
 
 test("renders completed draft sentences as separate rolling rows", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   upsertDraft(records, { id: 1, startMs: 0, endMs: 2_000 }, "一文目です。二文目です。まだ途中");
   assert.deepEqual(renderTimeline(records), {
     finals: ["一文目です。", "二文目です。"],
@@ -80,7 +81,7 @@ test("renders completed draft sentences as separate rolling rows", () => {
 });
 
 test("pairs segmented draft translations by sentence", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   replaceDraft(
     records,
     { id: 1, startMs: 0, endMs: 2_000 },
@@ -96,7 +97,7 @@ test("pairs segmented draft translations by sentence", () => {
 });
 
 test("commits quality text and removes fast text before its endpoint", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   upsertDraft(records, { id: 1, startMs: 0, endMs: 2_000 }, "久しぶりに");
   upsertDraft(records, { id: 2, startMs: 1_800, endMs: 3_800 }, "食べたの차오이");
   upsertDraft(records, { id: 3, startMs: 3_600, endMs: 5_600 }, "とてもおいしい");
@@ -115,7 +116,7 @@ test("commits quality text and removes fast text before its endpoint", () => {
 });
 
 test("keeps fast text that starts at the quality endpoint", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   upsertDraft(records, { id: 1, startMs: 0, endMs: 2_000 }, "first draft");
   upsertDraft(records, { id: 2, startMs: 2_000, endMs: 4_000 }, "later draft");
   commitQuality(records, { id: "quality-1", startMs: 0, endMs: 2_000, text: "corrected first" });
@@ -130,7 +131,7 @@ test("keeps fast text that starts at the quality endpoint", () => {
 });
 
 test("suppresses a late draft covered by an earlier quality result", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   assert.equal(commitQuality(records, {
     id: "quality-1",
     startMs: 0,
@@ -146,7 +147,7 @@ test("suppresses a late draft covered by an earlier quality result", () => {
 });
 
 test("segments and pairs a translated quality turn", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   commitQuality(records, {
     id: "quality-1",
     startMs: 0,
@@ -173,8 +174,8 @@ test("segments and pairs a translated quality turn", () => {
 });
 
 test("finalizes visible segments without resurfacing evicted draft segments", () => {
-  const records = [];
-  const evictedRowIds = new Set();
+  const records: CaptionRecord[] = [];
+  const evictedRowIds = new Set<string>();
   replaceDraft(
     records,
     { id: 1, startMs: 0, endMs: 5_000 },
@@ -202,8 +203,8 @@ test("finalizes visible segments without resurfacing evicted draft segments", ()
 });
 
 test("does not backfill evicted rows when the final result is shorter", () => {
-  const records = [];
-  const evictedRowIds = new Set();
+  const records: CaptionRecord[] = [];
+  const evictedRowIds = new Set<string>();
   replaceDraft(
     records,
     { id: 1, startMs: 0, endMs: 5_000 },
@@ -223,7 +224,7 @@ test("does not backfill evicted rows when the final result is shorter", () => {
 });
 
 test("appends quality turns without replacing earlier quality text", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   commitQuality(records, {
     id: "quality-1",
     startMs: 0,
@@ -248,7 +249,7 @@ test("appends quality turns without replacing earlier quality text", () => {
 });
 
 test("uses the last three sentence rows when a draft fills the display", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   commitQuality(records, {
     id: "quality-1",
     startMs: 0,
@@ -275,7 +276,7 @@ test("uses the last three sentence rows when a draft fills the display", () => {
 });
 
 test("uses the configured overlay line count", () => {
-  const records = [];
+  const records: CaptionRecord[] = [];
   upsertDraft(records, {
     id: 1,
     startMs: 0,

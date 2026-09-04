@@ -1,10 +1,16 @@
-(() => {
-const DEFAULT_SHORTCUT = "CommandOrControl+Shift+L";
+export interface ShortcutResult {
+  pending?: boolean;
+  cancelled?: boolean;
+  error?: string;
+  accelerator?: string;
+}
+
+export const DEFAULT_SHORTCUT = "CommandOrControl+Shift+L";
 const modifierKeys = new Set(["Meta", "Control", "Alt", "Shift"]);
 
-function display(shortcut) {
+export function display(shortcut: string | null): string {
   if (!shortcut) return "Disabled";
-  return shortcut.split("+").map((part) => ({
+  const symbols: Record<string, string> = {
     CommandOrControl: "⌘",
     Command: "⌘",
     Control: "⌃",
@@ -16,10 +22,11 @@ function display(shortcut) {
     Down: "↓",
     Left: "←",
     Right: "→"
-  })[part] || part).join("");
+  };
+  return shortcut.split("+").map((part) => symbols[part] || part).join("");
 }
 
-function acceleratorFromEvent(event) {
+export function acceleratorFromEvent(event: KeyboardEvent): ShortcutResult {
   if (modifierKeys.has(event.key)) return { pending: true };
   if (event.key === "Escape") return { cancelled: true };
 
@@ -37,10 +44,10 @@ function acceleratorFromEvent(event) {
     ArrowDown: "Down",
     ArrowLeft: "Left",
     ArrowRight: "Right"
-  })[event.code] || "";
+  } as Record<string, string>)[event.code] || "";
 
   if (!key) return { error: "Use a letter, number, function key, arrow, Space, Return, Tab, or Delete." };
-  const modifiers = [];
+  const modifiers: string[] = [];
   if (event.metaKey) modifiers.push("Command");
   if (event.ctrlKey) modifiers.push("Control");
   if (event.altKey) modifiers.push("Alt");
@@ -50,6 +57,3 @@ function acceleratorFromEvent(event) {
   }
   return { accelerator: [...modifiers, key].join("+") };
 }
-
-window.shortcut = { DEFAULT_SHORTCUT, display, acceleratorFromEvent };
-})();

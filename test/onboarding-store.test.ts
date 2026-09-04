@@ -1,23 +1,31 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const Module = require("node:module");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import Module from "node:module";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
 
-function loadOnboardingStore(userDataPath) {
-  const originalLoad = Module._load;
-  Module._load = function load(request, parent, isMain) {
+type CommonJsModule = typeof Module & {
+  _load(request: string, parent: NodeModule | undefined, isMain: boolean): unknown;
+};
+
+const commonJsModule = Module as CommonJsModule;
+
+function loadOnboardingStore(
+  userDataPath: string
+): typeof import("../electron/onboarding/onboarding-store") {
+  const originalLoad = commonJsModule._load;
+  commonJsModule._load = function load(request, parent, isMain) {
     if (request === "electron") return { app: { getPath: () => userDataPath } };
     return originalLoad.call(this, request, parent, isMain);
   };
 
   try {
-    const modulePath = require.resolve("../build/electron/onboarding/onboarding-store.js");
+    const modulePath = require.resolve("../electron/onboarding/onboarding-store.js");
     delete require.cache[modulePath];
-    return require(modulePath);
+    return require(modulePath) as typeof import("../electron/onboarding/onboarding-store");
   } finally {
-    Module._load = originalLoad;
+    commonJsModule._load = originalLoad;
   }
 }
 

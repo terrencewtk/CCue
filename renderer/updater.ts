@@ -1,18 +1,18 @@
-const availableVersion = document.querySelector("#availableVersion");
-const currentVersion = document.querySelector("#currentVersion");
-const releaseVersion = document.querySelector("#releaseVersion");
-const releaseNotes = document.querySelector("#releaseNotes");
-const automaticDownload = document.querySelector("#automaticDownload");
-const progressSection = document.querySelector("#progressSection");
-const progressLabel = document.querySelector("#progressLabel");
-const progressPercent = document.querySelector("#progressPercent");
-const progress = document.querySelector("#progress");
-const errorMessage = document.querySelector("#errorMessage");
-const skipButton = document.querySelector("#skipButton");
-const laterButton = document.querySelector("#laterButton");
-const installButton = document.querySelector("#installButton");
+const availableVersion = document.querySelector<HTMLElement>("#availableVersion")!;
+const currentVersion = document.querySelector<HTMLElement>("#currentVersion")!;
+const releaseVersion = document.querySelector<HTMLElement>("#releaseVersion")!;
+const releaseNotes = document.querySelector<HTMLElement>("#releaseNotes")!;
+const automaticDownload = document.querySelector<HTMLInputElement>("#automaticDownload")!;
+const progressSection = document.querySelector<HTMLElement>("#progressSection")!;
+const progressLabel = document.querySelector<HTMLElement>("#progressLabel")!;
+const progressPercent = document.querySelector<HTMLElement>("#progressPercent")!;
+const progress = document.querySelector<HTMLProgressElement>("#progress")!;
+const errorMessage = document.querySelector<HTMLElement>("#errorMessage")!;
+const skipButton = document.querySelector<HTMLButtonElement>("#skipButton")!;
+const laterButton = document.querySelector<HTMLButtonElement>("#laterButton")!;
+const installButton = document.querySelector<HTMLButtonElement>("#installButton")!;
 
-function render(state) {
+function render(state: UpdaterState): void {
   availableVersion.textContent = state.version;
   currentVersion.textContent = state.currentVersion;
   releaseVersion.textContent = state.version;
@@ -47,9 +47,9 @@ function render(state) {
   if (state.status === "error") errorMessage.textContent = state.error || "The update could not be downloaded.";
 }
 
-function renderReleaseNotes(notes) {
+function renderReleaseNotes(notes: string): void {
   const fragment = document.createDocumentFragment();
-  let list = null;
+  let list: HTMLUListElement | null = null;
   for (const sourceLine of notes.split(/\r?\n/)) {
     const line = sourceLine.trim();
     if (!line) {
@@ -63,7 +63,7 @@ function renderReleaseNotes(notes) {
         fragment.append(list);
       }
       const item = document.createElement("li");
-      item.textContent = bullet[1];
+      item.textContent = bullet[1] ?? "";
       list.append(item);
       continue;
     }

@@ -43,6 +43,10 @@ export class CaptureController {
   get isCapturing(): boolean { return this.capturing; }
   ensureSidecar(): void { this.sidecar.ensureRunning(); }
   clearCaptions(): void { this.captions.clear(); }
+  setOverlayLineCount(lineCount: number): void {
+    this.settings = { ...this.settings, overlayLineCount: lineCount };
+    this.captions.setMaxRows(lineCount);
+  }
 
   async start(settingsInput: CaptureSettingsInput): Promise<{ ok: true }> {
     if (this.capturing) return { ok: true };

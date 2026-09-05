@@ -60,8 +60,10 @@ function applyGlobalShortcut(shortcut: string | null): void {
 
 void app.whenReady().then(() => {
   onboardingCompleted = hasCompletedOnboarding();
-  // Settings are defaults for a new app session. Keep a snapshot so changes in
-  // either the control window or Settings do not implicitly update the other.
+  // Settings are the baseline for a new app session. The control window can
+  // still diverge temporarily, but resolved language-pair changes from Settings
+  // are mirrored into the session snapshot so the shortcut starts from the same
+  // supported pair.
   sessionSettings = readSettings();
   windows.createControlWindow(onboardingCompleted);
   windows.createOverlayWindow();
@@ -163,11 +165,10 @@ void app.whenReady().then(() => {
     const nextSettings = normalizeCaptureSettings(settings);
     applyGlobalShortcut(nextSettings.globalShortcut);
     writeSettings(nextSettings);
-    // Overlay line count has no session-level control, so keep it in sync with
-    // the persistent setting for the next capture session.
     sessionSettings = {
       ...sessionSettings,
-      overlayLineCount: nextSettings.overlayLineCount
+      language: nextSettings.language,
+      translationLanguage: nextSettings.translationLanguage
     };
     return nextSettings;
   });

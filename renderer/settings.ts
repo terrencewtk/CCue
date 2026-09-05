@@ -11,7 +11,7 @@ import {
 } from "./language-catalog.js";
 import { createRefreshTracker } from "./refresh-tracker.js";
 import { runFullModelRefresh, type ModelRefreshPhase } from "./full-model-refresh.js";
-import { prepareTranslationRefresh } from "./translation-refresh.js";
+import { prepareTranslationRefresh, shouldPersistResolvedTranslationSelection } from "./translation-refresh.js";
 import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
 
 const translationEnabled = document.querySelector<HTMLInputElement>("#translationEnabled")!;
@@ -317,19 +317,25 @@ function setModelRefreshPending(generation: number, refreshing: boolean): void {
 }
 
 function setModelRefreshPhase(phase: ModelRefreshPhase): void {
-  transcriptionRefreshStatus.textContent = phase === "transcription"
-    ? "Checking availability…"
-    : "Availability checked";
-  translationRefreshStatus.textContent = phase === "transcription"
-    ? "Waiting for transcription checks…"
-    : "Checking availability…";
+  if (phase === "preflight") {
+    transcriptionRefreshStatus.textContent = "Checking availability…";
+    translationRefreshStatus.textContent = "Checking availability…";
+  } else if (phase === "transcription") {
+    transcriptionRefreshStatus.textContent = "Checking availability…";
+    translationRefreshStatus.textContent = "Waiting for transcription checks…";
+  } else {
+    transcriptionRefreshStatus.textContent = "Availability checked";
+    translationRefreshStatus.textContent = "Checking availability…";
+  }
 }
 
 async function selectModel(kind: ModelKind, value: string): Promise<void> {
   if (kind === "transcription") {
     selectedLanguage = value;
     if (sameTranslationLanguage(selectedTranslationLanguage, value)) {
-      selectedTranslationLanguage = translationLanguages.find((model) => !sameTranslationLanguage(model.value, value))?.value || "en-US";
+      selectedTranslationLanguage = translationLanguages.find(
+        (model) => !sameTranslationLanguage(model.value, value)
+      )?.value || "en-US";
       const nextTarget = findRow("translation", selectedTranslationLanguage)?.querySelector<HTMLInputElement>("input");
       if (nextTarget) nextTarget.checked = true;
     }
@@ -365,19 +371,27 @@ async function refreshModels(persistTranslationSelection = false): Promise<void>
           sourceLanguage,
           preferredTranslationLanguage,
           (source) => runModelOperation(() => window.captions.getTranslationLanguages(source)),
-          async (resolvedTranslationLanguage) => {
-            if (!persistTranslationSelection) return;
-            await persistSettings({
-              ...settings(),
-              language: sourceLanguage,
-              translationLanguage: resolvedTranslationLanguage
-            });
-          },
           () => refreshTracker.isCurrent(generation)
         );
         if (!plan) return null;
         identifiers = plan.identifiers;
         selectedTranslationLanguage = plan.selectedTranslationLanguage;
+        if (persistTranslationSelection) {
+          const currentSettings = settings();
+          if (shouldPersistResolvedTranslationSelection(
+            currentSettings.language,
+            currentSettings.translationLanguage,
+            sourceLanguage,
+            selectedTranslationLanguage
+          )) {
+            const saved = await persistSettings({
+              ...currentSettings,
+              language: sourceLanguage,
+              translationLanguage: selectedTranslationLanguage
+            });
+            if (!saved) return null;
+          }
+        }
       } catch (error) {
         if (!refreshTracker.isCurrent(generation)) return null;
         showError(error);
@@ -388,13 +402,6 @@ async function refreshModels(persistTranslationSelection = false): Promise<void>
           identifiers,
           "en-US"
         );
-        if (persistTranslationSelection) {
-          await persistSettings({
-            ...settings(),
-            language: sourceLanguage,
-            translationLanguage: selectedTranslationLanguage
-          });
-        }
       }
       return identifiers;
     },
@@ -524,7 +531,7 @@ if (!window.captions) {
     renderShortcut();
     renderModelLists();
     window.captions.onOnboardingModelStatus(handleModelStatus);
-    return refreshModels();
+    return refreshModels(true);
   }).catch(showError);
 
   overlayLineCount.addEventListener("change", () => { void persistSettings(); });

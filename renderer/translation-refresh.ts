@@ -5,11 +5,19 @@ export interface TranslationRefreshPlan {
   selectedTranslationLanguage: string;
 }
 
+export function shouldPersistResolvedTranslationSelection(
+  currentLanguage: string,
+  currentTranslationLanguage: string,
+  sourceLanguage: string,
+  resolvedTranslationLanguage: string
+): boolean {
+  return currentLanguage !== sourceLanguage || currentTranslationLanguage !== resolvedTranslationLanguage;
+}
+
 export async function prepareTranslationRefresh(
   sourceLanguage: string,
   preferredTranslationLanguage: string,
   getTranslationLanguages: (sourceLanguage: string) => Promise<string[]>,
-  persistSelection: (selectedTranslationLanguage: string) => Promise<void>,
   isCurrent: () => boolean
 ): Promise<TranslationRefreshPlan | null> {
   const identifiers = await getTranslationLanguages(sourceLanguage);
@@ -20,8 +28,6 @@ export async function prepareTranslationRefresh(
     identifiers,
     "en-US"
   );
-  if (!isCurrent()) return null;
-  await persistSelection(selectedTranslationLanguage);
   if (!isCurrent()) return null;
   return { identifiers, selectedTranslationLanguage };
 }

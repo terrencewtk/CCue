@@ -1,11 +1,11 @@
-export type ModelRefreshPhase = "transcription" | "translation";
+export type ModelRefreshPhase = "preflight" | "transcription" | "translation";
 
 export interface FullModelRefreshOptions<Availability> {
   transcriptionLanguages: readonly string[];
   isCurrent: () => boolean;
   setBusy: (busy: boolean) => void;
   setPhase: (phase: ModelRefreshPhase) => void;
-  setChecking: (kind: ModelRefreshPhase, language: string) => void;
+  setChecking: (kind: "transcription" | "translation", language: string) => void;
   checkTranscription: (language: string) => Promise<Availability>;
   applyTranscription: (language: string, availability: Availability) => void;
   failTranscription: (language: string, error: unknown) => void;
@@ -21,6 +21,11 @@ export async function runFullModelRefresh<Availability>(
 ): Promise<"completed" | "stale"> {
   options.setBusy(true);
   try {
+    options.setPhase("preflight");
+    const translationLanguages = await options.prepareTranslation();
+    if (!translationLanguages || !options.isCurrent()) return "stale";
+    options.setTranslationLanguages(translationLanguages);
+
     options.setPhase("transcription");
     for (const language of options.transcriptionLanguages) {
       if (!options.isCurrent()) return "stale";
@@ -37,10 +42,6 @@ export async function runFullModelRefresh<Availability>(
 
     if (!options.isCurrent()) return "stale";
     options.setPhase("translation");
-    const translationLanguages = await options.prepareTranslation();
-    if (!translationLanguages || !options.isCurrent()) return "stale";
-    options.setTranslationLanguages(translationLanguages);
-
     for (const language of translationLanguages) {
       if (!options.isCurrent()) return "stale";
       options.setChecking("translation", language);

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runFullModelRefresh } from "../renderer/full-model-refresh";
 import { createRefreshTracker } from "../renderer/refresh-tracker";
-import { prepareTranslationRefresh } from "../renderer/translation-refresh";
+import {
+  prepareTranslationRefresh,
+  shouldPersistResolvedTranslationSelection
+} from "../renderer/translation-refresh";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -10,7 +13,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-test("prepareTranslationRefresh persists the resolved fallback before the caller can scan", async () => {
+test("prepareTranslationRefresh resolves the fallback target before the caller can scan", async () => {
   const events: string[] = [];
   const plan = await prepareTranslationRefresh(
     "ja-JP",
@@ -19,9 +22,6 @@ test("prepareTranslationRefresh persists the resolved fallback before the caller
       events.push(`catalog:${sourceLanguage}`);
       return ["en", "zh-Hans", "zh-Hant"];
     },
-    async (selectedTranslationLanguage) => {
-      events.push(`persist:${selectedTranslationLanguage}`);
-    },
     () => true
   );
 
@@ -29,10 +29,10 @@ test("prepareTranslationRefresh persists the resolved fallback before the caller
   if (!plan) return;
   events.push(`scan:${plan.selectedTranslationLanguage}`);
 
-  assert.deepEqual(events, ["catalog:ja-JP", "persist:en", "scan:en"]);
+  assert.deepEqual(events, ["catalog:ja-JP", "scan:en"]);
 });
 
-test("prepareTranslationRefresh aborts stale work before persisting", async () => {
+test("prepareTranslationRefresh aborts stale work before returning a plan", async () => {
   const events: string[] = [];
   let current = true;
   const plan = await prepareTranslationRefresh(
@@ -43,14 +43,17 @@ test("prepareTranslationRefresh aborts stale work before persisting", async () =
       current = false;
       return ["en", "zh-Hans", "zh-Hant"];
     },
-    async (selectedTranslationLanguage) => {
-      events.push(`persist:${selectedTranslationLanguage}`);
-    },
     () => current
   );
 
   assert.equal(plan, null);
   assert.deepEqual(events, ["catalog:ja-JP"]);
+});
+
+test("resolved fallback persistence only runs when the pair actually changes", () => {
+  assert.equal(shouldPersistResolvedTranslationSelection("ja-JP", "en", "ja-JP", "en"), false);
+  assert.equal(shouldPersistResolvedTranslationSelection("ja-JP", "en", "en-US", "en"), true);
+  assert.equal(shouldPersistResolvedTranslationSelection("ja-JP", "en", "ja-JP", "fr"), true);
 });
 
 test("refresh trackers invalidate stale refresh generations", () => {
@@ -63,7 +66,7 @@ test("refresh trackers invalidate stale refresh generations", () => {
   assert.equal(tracker.isCurrent(second), true);
 });
 
-test("a replacement refresh completes every transcription row before starting translation", async () => {
+test("a replacement refresh resolves and persists the pair before transcription checks begin", async () => {
   const tracker = createRefreshTracker();
   const staleCheck = deferred<string>();
   const events: string[] = [];
@@ -94,6 +97,7 @@ test("a replacement refresh completes every transcription row before starting tr
       failTranscription: () => assert.fail("transcription check should not fail"),
       prepareTranslation: async () => {
         events.push(`${source}:catalog`);
+        events.push(`${source}:persist:en`);
         return ["fr-FR"];
       },
       setTranslationLanguages: () => events.push(`${source}:translation-rows`),
@@ -118,6 +122,10 @@ test("a replacement refresh completes every transcription row before starting tr
 
   const replacementEvents = events.filter((event) => event.startsWith("new:"));
   assert.deepEqual(replacementEvents, [
+    "new:phase:preflight",
+    "new:catalog",
+    "new:persist:en",
+    "new:translation-rows",
     "new:phase:transcription",
     "new:checking:transcription:en-US",
     "new:check:transcription:en-US",
@@ -126,8 +134,6 @@ test("a replacement refresh completes every transcription row before starting tr
     "new:check:transcription:ja-JP",
     "new:ready:transcription:ja-JP",
     "new:phase:translation",
-    "new:catalog",
-    "new:translation-rows",
     "new:checking:translation:fr-FR",
     "new:check:translation:fr-FR",
     "new:ready:translation:fr-FR"

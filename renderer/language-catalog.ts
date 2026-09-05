@@ -89,6 +89,16 @@ export function resolveLanguageSelection(
   return equivalent ?? available.find((value) => sameTranslationLanguage(value, fallback)) ?? available[0] ?? fallback;
 }
 
+export function resolveTranslationLanguageSelection(
+  preferred: string,
+  sourceLanguage: string,
+  available: readonly string[],
+  fallback: string
+): string {
+  const validTargets = available.filter((target) => !sameTranslationLanguage(target, sourceLanguage));
+  return resolveLanguageSelection(preferred, validTargets, fallback);
+}
+
 export async function discoverLanguages(
   bridge: {
     getTranscriptionLanguages(): Promise<string[]>;

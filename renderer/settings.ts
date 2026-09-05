@@ -5,6 +5,7 @@ import {
   filterLanguages,
   languageModels,
   resolveLanguageSelection,
+  resolveTranslationLanguageSelection,
   sameTranslationLanguage,
   type LanguageModel
 } from "./language-catalog.js";
@@ -290,8 +291,8 @@ async function selectModel(kind: ModelKind, value: string): Promise<void> {
       if (nextTarget) nextTarget.checked = true;
     }
     updateTranslationControls();
-    await persistSettings();
     await refreshTranslationModels();
+    await persistSettings();
   } else {
     selectedTranslationLanguage = value;
     await persistSettings();
@@ -327,7 +328,7 @@ async function refreshTranslationModels(existingGeneration?: number): Promise<vo
   }
   if (generation !== refreshGeneration) return;
   translationLanguages = languageModels(identifiers);
-  selectedTranslationLanguage = resolveLanguageSelection(selectedTranslationLanguage, identifiers, "en-US");
+  selectedTranslationLanguage = resolveTranslationLanguageSelection(selectedTranslationLanguage, selectedLanguage, identifiers, "en-US");
   translationModels.replaceChildren(...translationLanguages.map((model) => modelRow(model, "translation")));
   applyModelFilter("translation");
   for (const model of translationLanguages) {

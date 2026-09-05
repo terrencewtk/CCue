@@ -4,6 +4,7 @@ import Module from "node:module";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { resolveTranslationLanguageSelection } from "../renderer/language-catalog";
 
 type CommonJsModule = typeof Module & {
   _load(request: string, parent: NodeModule | undefined, isMain: boolean): unknown;
@@ -107,6 +108,37 @@ test("preserves newly discovered canonical language selections", () => {
     assert.equal(settings.language, "fr-FR");
     assert.equal(settings.translationLanguage, "ar");
     assert.equal(normalizeCaptureSettings({ language: "not_a_locale" }).language, "ja-JP");
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});
+
+test("persists a resolved fallback translation target after the spoken language changes", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    const { normalizeCaptureSettings, readSettings, writeSettings } = loadSettingsStore(userDataPath);
+    writeSettings({
+      language: "en-US",
+      translationEnabled: true,
+      translationLanguage: "ja-JP",
+      overlayLineCount: 3
+    });
+
+    const runtimeTargets = ["en", "zh-Hans", "zh-Hant"];
+    const resolvedTranslationLanguage = resolveTranslationLanguageSelection(
+      readSettings().translationLanguage,
+      "ja-JP",
+      runtimeTargets,
+      "en-US"
+    );
+    writeSettings(normalizeCaptureSettings({
+      ...readSettings(),
+      language: "ja-JP",
+      translationLanguage: resolvedTranslationLanguage
+    }));
+
+    assert.equal(readSettings().language, "ja-JP");
+    assert.equal(readSettings().translationLanguage, "en");
   } finally {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   }

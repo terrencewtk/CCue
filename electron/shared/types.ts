@@ -17,6 +17,24 @@ export interface CaptureSettings {
   globalShortcut: string | null;
 }
 
+export interface ModelAvailability {
+  installed: boolean;
+  supported: boolean;
+  deletable?: boolean;
+}
+
+export interface ModelLanguageState {
+  language: string;
+  availability: ModelAvailability;
+}
+
+export interface ModelSettingsResult {
+  settings: CaptureSettings;
+  transcription: ModelLanguageState[];
+  translation: ModelLanguageState[];
+  selectedTranslationLanguage: string | null;
+}
+
 export interface CaptionUtterance {
   text: string;
   translation: string;

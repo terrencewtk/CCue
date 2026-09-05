@@ -10,6 +10,9 @@ function subscribe<T>(channel: string, listener: Listener<T>): () => void {
 
 contextBridge.exposeInMainWorld("captions", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
+  runModelSettings: (settings: unknown, action?: unknown) => (
+    ipcRenderer.invoke("model-settings:run", settings, action)
+  ),
   saveSettings: (settings: unknown) => ipcRenderer.invoke("settings:save", settings),
   setShortcutRecording: (recording: boolean) => ipcRenderer.invoke("shortcut:set-recording", recording),
   getSessionSettings: () => ipcRenderer.invoke("session-settings:get"),

@@ -1,9 +1,9 @@
 import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
 import {
   LEGACY_TRANSCRIPTION_LANGUAGES,
-  LEGACY_TRANSLATION_LANGUAGES,
   languageModels,
   resolveLanguageSelection,
+  resolveTranslationLanguageSelection,
   sameTranslationLanguage
 } from "./language-catalog.js";
 import { LanguagePicker } from "./language-picker.js";
@@ -199,21 +199,19 @@ async function updateTargetOptions(preferred = translationLanguage.value || "en-
   try {
     const targets = await window.captions.getTranslationLanguages(language.value);
     const selectable = targets.filter((target) => !sameTranslationLanguage(target, language.value));
-    if (!selectable.length) {
+    const selected = resolveTranslationLanguageSelection(preferred, language.value, targets, "en-US");
+    if (!selected) {
       translationLanguage.setMessage("No translation targets");
+      translationChoices.forEach((choice) => { choice.checked = choice.value === "no"; });
+      updateTranslationChoice();
       showError("Apple reported no translation targets for this spoken language.");
       return;
     }
-    const selected = resolveLanguageSelection(preferred, selectable, "en-US");
     translationLanguage.setOptions(languageModels(selectable), selected);
   } catch (error) {
-    const fallbackTargets = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, language.value));
-    if (!fallbackTargets.length) {
-      translationLanguage.setMessage("No translation targets");
-      showError(`Could not refresh Apple translation languages: ${error instanceof Error ? error.message : String(error)}`);
-      return;
-    }
-    translationLanguage.setOptions(languageModels(fallbackTargets), resolveLanguageSelection(preferred, fallbackTargets, "en-US"));
+    translationLanguage.setMessage("Translation languages unavailable");
+    translationChoices.forEach((choice) => { choice.checked = choice.value === "no"; });
+    updateTranslationChoice();
     showError(`Could not refresh Apple translation languages: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -408,10 +406,10 @@ if (!window.captions) {
     }
     const selectedSource = resolveLanguageSelection(settings.language || "en-US", transcription, "en-US");
     language.setOptions(languageModels(transcription), selectedSource);
-    await updateTargetOptions(settings.translationLanguage || "en-US");
     translationChoices.forEach((choice) => {
       choice.checked = choice.value === (settings.translationEnabled === false ? "no" : "yes");
     });
+    await updateTargetOptions(settings.translationLanguage || "en-US");
     selectedShortcut = settings.globalShortcut === null
       ? null
       : settings.globalShortcut || DEFAULT_SHORTCUT;

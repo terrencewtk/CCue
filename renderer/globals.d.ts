@@ -6,6 +6,18 @@ interface CaptureSettings {
   globalShortcut: string | null;
 }
 interface ModelAvailability { installed: boolean; supported: boolean; deletable?: boolean; }
+interface ModelLanguageState { language: string; availability: ModelAvailability; }
+interface ModelSettingsResult {
+  settings: CaptureSettings;
+  transcription: ModelLanguageState[];
+  translation: ModelLanguageState[];
+  selectedTranslationLanguage: string | null;
+}
+type ModelSettingsAction =
+  | { type: "refresh" }
+  | { type: "prepare-transcription"; language: string }
+  | { type: "delete-transcription"; language: string }
+  | { type: "prepare-translation"; language: string };
 interface ModelPreparationStatus {
   model: "transcription" | "translation"; state: "preparing" | "ready" | "error";
   percent?: number; detail: string;
@@ -23,6 +35,7 @@ interface UpdaterState {
 }
 interface CaptionsBridge {
   getSettings(): Promise<CaptureSettings>; saveSettings(settings: Partial<CaptureSettings>): Promise<CaptureSettings>;
+  runModelSettings(settings: CaptureSettings, action?: ModelSettingsAction): Promise<ModelSettingsResult>;
   setShortcutRecording(recording: boolean): Promise<void>; getSessionSettings(): Promise<CaptureSettings>;
   saveSessionSettings(settings: Partial<CaptureSettings>): Promise<CaptureSettings>; resetSessionSettings(): Promise<void>;
   start(settings: CaptureSettings): Promise<void>; stop(): Promise<void>; clear(): Promise<void>;

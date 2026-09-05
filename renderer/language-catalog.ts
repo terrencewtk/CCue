@@ -94,24 +94,7 @@ export function resolveTranslationLanguageSelection(
   sourceLanguage: string,
   available: readonly string[],
   fallback: string
-): string {
+): string | null {
   const validTargets = available.filter((target) => !sameTranslationLanguage(target, sourceLanguage));
-  return resolveLanguageSelection(preferred, validTargets, fallback);
-}
-
-export async function discoverLanguages(
-  bridge: {
-    getTranscriptionLanguages(): Promise<string[]>;
-    getTranslationLanguages(sourceLanguage?: string): Promise<string[]>;
-  },
-  sourceLanguage?: string
-): Promise<{ transcription: string[]; translation: string[] }> {
-  const [transcription, translation] = await Promise.all([
-    bridge.getTranscriptionLanguages(),
-    bridge.getTranslationLanguages(sourceLanguage)
-  ]);
-  return {
-    transcription: deduplicateLanguages(transcription),
-    translation: deduplicateLanguages(translation)
-  };
+  return validTargets.length ? resolveLanguageSelection(preferred, validTargets, fallback) : null;
 }

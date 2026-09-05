@@ -98,5 +98,8 @@ export function writeSettings(settingsInput: CaptureSettingsInput): void {
     globalShortcut: settings.globalShortcut
   };
   fs.mkdirSync(app.getPath("userData"), { recursive: true });
-  fs.writeFileSync(settingsPath(), JSON.stringify(record, null, 2));
+  const destination = settingsPath();
+  const temporary = `${destination}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(record, null, 2));
+  fs.renameSync(temporary, destination);
 }

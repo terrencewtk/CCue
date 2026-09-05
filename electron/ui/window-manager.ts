@@ -9,7 +9,7 @@ import {
   type WebContents
 } from "electron";
 import { preloadScriptPath, rendererFilePath } from "../shared/runtime-paths";
-import type { CaptionState, CaptureSettings } from "../shared/types";
+import type { CaptionState, CaptureSettings, LanguageLibrary } from "../shared/types";
 import type { ModelPreparationStatus } from "../onboarding/model-preparation-controller";
 
 export interface CaptureStatus {
@@ -277,6 +277,11 @@ export class WindowManager {
 
   sendSessionSettings(settings: CaptureSettings): void {
     this.send(this.controlWindow, "session-settings:update", settings);
+  }
+
+  sendLanguageLibrary(library: LanguageLibrary): void {
+    this.send(this.controlWindow, "language-library:update", library);
+    this.send(this.settingsWindow, "language-library:update", library);
   }
 
   sendOnboardingStatus(status: ModelPreparationStatus): void {

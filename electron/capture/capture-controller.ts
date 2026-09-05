@@ -21,7 +21,10 @@ export class CaptureController {
   private readonly segmentTranslationCache = new Map<string, Promise<string>>();
   private translationReady = false;
 
-  constructor(private readonly windows: WindowManager) {
+  constructor(
+    private readonly windows: WindowManager,
+    private readonly validateSettings?: (settings: CaptureSettings) => Promise<void>
+  ) {
     this.captions = new CaptionService(windows);
     this.localTranscription = new LocalAsrStream({
       onStatus: (detail) => this.windows.sendStatus({ state: "connecting", detail }),
@@ -47,6 +50,7 @@ export class CaptureController {
   async start(settingsInput: CaptureSettingsInput): Promise<{ ok: true }> {
     if (this.capturing) return { ok: true };
     const settings = normalizeCaptureSettings(settingsInput);
+    await this.validateSettings?.(settings);
 
     this.settings = settings;
     this.sessionId += 1;

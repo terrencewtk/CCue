@@ -1,8 +1,21 @@
 import { app, globalShortcut, ipcMain, Menu, screen } from "electron";
 import { CaptureController } from "./capture/capture-controller";
-import { normalizeCaptureSettings, readSettings, writeSettings } from "./settings/settings-store";
-import type { CaptureSettings, CaptureSettingsInput } from "./shared/types";
-import { ModelSettingsController, type ModelSettingsAction } from "./settings/model-settings-controller";
+import { validateSelectedModels } from "./capture/selected-model-validator";
+import {
+  createOnboardingSnapshot,
+  normalizeCaptureSettings,
+  readSettingsSnapshot,
+  writeSettingsSnapshot
+} from "./settings/settings-store";
+import {
+  type CaptureSettings,
+  type CaptureSettingsInput,
+  type SettingsSnapshot
+} from "./shared/types";
+import {
+  LanguageLibraryController,
+  type LanguageLibraryAction
+} from "./settings/language-library-controller";
 import { WindowManager } from "./ui/window-manager";
 import { hasCompletedOnboarding, markOnboardingCompleted } from "./onboarding/onboarding-store";
 import { ModelPreparationController } from "./onboarding/model-preparation-controller";
@@ -10,10 +23,18 @@ import { UpdateController } from "./updater/update-controller";
 import path from "node:path";
 
 const windows = new WindowManager();
-const capture = new CaptureController(windows);
 const modelPreparation = new ModelPreparationController(windows);
+const capture = new CaptureController(windows, (settings) => validateSelectedModels(
+  settings,
+  persistedSnapshot.library,
+  {
+    transcription: (language) => modelPreparation.transcriptionAvailability(language),
+    translation: (source, target) => modelPreparation.translationAvailability(source, target)
+  }
+));
 const updater = new UpdateController();
 let sessionSettings: CaptureSettings;
+let persistedSnapshot: SettingsSnapshot;
 let onboardingCompleted = false;
 let registeredShortcut: string | null = null;
 const shortcutRecordingSenders = new Set<number>();
@@ -59,38 +80,36 @@ function applyGlobalShortcut(shortcut: string | null): void {
   }
 }
 
-function commitSettings(settings: CaptureSettings): void {
+function commitSnapshot(snapshot: SettingsSnapshot, replaceSession: boolean): void {
   const previous = sessionSettings;
-  applyGlobalShortcut(settings.globalShortcut);
+  applyGlobalShortcut(snapshot.settings.globalShortcut);
   try {
-    writeSettings(settings);
+    writeSettingsSnapshot(snapshot);
   } catch (error) {
     try {
       applyGlobalShortcut(previous.globalShortcut);
     } catch {}
     throw error;
   }
-  sessionSettings = settings;
-  windows.sendSessionSettings(settings);
+  persistedSnapshot = snapshot;
+  if (replaceSession) {
+    sessionSettings = snapshot.settings;
+    windows.sendSessionSettings(sessionSettings);
+  }
+  windows.sendLanguageLibrary(snapshot.library);
 }
 
 void app.whenReady().then(() => {
   onboardingCompleted = hasCompletedOnboarding();
   // A Settings commit replaces the complete session baseline. Control-window
   // edits may diverge from it until reset or restart.
-  sessionSettings = readSettings();
-  const modelSettings = new ModelSettingsController({
-    normalize: normalizeCaptureSettings,
-    read: readSettings,
-    commit: commitSettings,
-    transcriptionLanguages: () => languagePreview
-      ? Promise.resolve(previewTranscriptionLanguages)
-      : modelPreparation.transcriptionLanguages(),
-    translationLanguages: (sourceLanguage) => languagePreview
-      ? Promise.resolve(previewTranslationLanguages.filter(
-        (language) => !sourceLanguage.toLowerCase().startsWith(language.toLowerCase())
-      ))
-      : modelPreparation.translationLanguages(sourceLanguage),
+  persistedSnapshot = readSettingsSnapshot();
+  writeSettingsSnapshot(persistedSnapshot);
+  sessionSettings = persistedSnapshot.settings;
+  const languageLibrary = new LanguageLibraryController({
+    read: () => persistedSnapshot,
+    sourceLanguage: () => sessionSettings.language,
+    commit: (snapshot) => commitSnapshot(snapshot, false),
     transcriptionAvailability: (language) => languagePreview
       ? Promise.resolve({ installed: ["en-US", "ja-JP"].includes(language), supported: true, deletable: false })
       : modelPreparation.transcriptionAvailability(language),
@@ -144,11 +163,9 @@ void app.whenReady().then(() => {
     { role: "windowMenu" }
   ]));
 
-  ipcMain.handle("settings:get", () => readSettings());
-  ipcMain.handle(
-    "model-settings:run",
-    (_event, settings: CaptureSettingsInput, action?: ModelSettingsAction) => modelSettings.run(settings, action)
-  );
+  ipcMain.handle("settings:get", () => persistedSnapshot.settings);
+  ipcMain.handle("language-library:get", () => persistedSnapshot.library);
+  ipcMain.handle("language-library:run", (_event, action?: LanguageLibraryAction) => languageLibrary.run(action));
   ipcMain.handle("shortcut:set-recording", (event, recording: boolean) => {
     const senderId = event.sender.id;
     if (recording === true) {
@@ -158,11 +175,11 @@ void app.whenReady().then(() => {
       shortcutRecordingSenders.delete(senderId);
     }
   });
-  ipcMain.handle("onboarding:get", () => ({ settings: readSettings() }));
-  ipcMain.handle("models:transcription-languages", () => (
+  ipcMain.handle("onboarding:get", () => ({ settings: persistedSnapshot.settings }));
+  ipcMain.handle("language-catalog:transcription", () => (
     languagePreview ? previewTranscriptionLanguages : modelPreparation.transcriptionLanguages()
   ));
-  ipcMain.handle("models:translation-languages", (_event, sourceLanguage?: string) => (
+  ipcMain.handle("language-catalog:translation", (_event, sourceLanguage?: string) => (
     languagePreview
       ? previewTranslationLanguages.filter((language) => !sourceLanguage?.toLowerCase().startsWith(language.toLowerCase()))
       : modelPreparation.translationLanguages(sourceLanguage)
@@ -194,29 +211,29 @@ void app.whenReady().then(() => {
   );
   ipcMain.handle("onboarding:complete", (_event, settings: CaptureSettingsInput) => {
     const completedSettings = normalizeCaptureSettings(settings);
-    applyGlobalShortcut(completedSettings.globalShortcut);
-    writeSettings(completedSettings);
-    sessionSettings = completedSettings;
+    commitSnapshot(createOnboardingSnapshot(completedSettings), true);
     markOnboardingCompleted();
     onboardingCompleted = true;
-    windows.sendSessionSettings(completedSettings);
     windows.completeOnboarding();
     return completedSettings;
   });
-  ipcMain.handle("settings:save", (_event, settings: CaptureSettingsInput) => modelSettings.saveGeneral(settings));
+  ipcMain.handle("settings:save", (_event, settings: CaptureSettingsInput) => {
+    const complete = normalizeCaptureSettings({ ...persistedSnapshot.settings, ...settings });
+    commitSnapshot({ settings: complete, library: persistedSnapshot.library }, true);
+    return complete;
+  });
+  ipcMain.handle("session-state:get", () => ({ settings: sessionSettings, library: persistedSnapshot.library }));
   ipcMain.handle("session-settings:get", () => sessionSettings);
   ipcMain.handle("session-settings:save", (_event, settings: CaptureSettingsInput) => {
     sessionSettings = normalizeCaptureSettings({ ...sessionSettings, ...settings });
     return sessionSettings;
   });
   ipcMain.handle("session-settings:reset", () => {
-    sessionSettings = readSettings();
+    sessionSettings = persistedSnapshot.settings;
     windows.sendSessionSettings(sessionSettings);
     return sessionSettings;
   });
-  ipcMain.handle("capture:start", (_event, settings: CaptureSettingsInput) => {
-    return capture.start(settings);
-  });
+  ipcMain.handle("capture:start", (_event, settings: CaptureSettingsInput) => capture.start(settings));
   ipcMain.handle("capture:stop", () => capture.stop());
   ipcMain.handle("caption:clear", () => capture.clearCaptions());
   ipcMain.on("overlay:resize", (event, height: unknown) => {

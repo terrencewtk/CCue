@@ -7,14 +7,19 @@ interface CaptureSettings {
 }
 interface ModelAvailability { installed: boolean; supported: boolean; deletable?: boolean; }
 interface ModelLanguageState { language: string; availability: ModelAvailability; }
-interface ModelSettingsResult {
-  settings: CaptureSettings;
+interface LanguageLibrary {
+  version: 1;
+  enabledTranscriptionLanguages: string[];
+  enabledTranslationLanguages: string[];
+}
+interface LanguageLibraryStatus {
+  library: LanguageLibrary;
   transcription: ModelLanguageState[];
   translation: ModelLanguageState[];
-  selectedTranslationLanguage: string | null;
 }
-type ModelSettingsAction =
+type LanguageLibraryAction =
   | { type: "refresh" }
+  | { type: "enable" | "disable"; kind: "transcription" | "translation"; language: string }
   | { type: "prepare-transcription"; language: string }
   | { type: "delete-transcription"; language: string }
   | { type: "prepare-translation"; language: string };
@@ -35,8 +40,10 @@ interface UpdaterState {
 }
 interface CaptionsBridge {
   getSettings(): Promise<CaptureSettings>; saveSettings(settings: Partial<CaptureSettings>): Promise<CaptureSettings>;
-  runModelSettings(settings: CaptureSettings, action?: ModelSettingsAction): Promise<ModelSettingsResult>;
+  getLanguageLibrary(): Promise<LanguageLibrary>;
+  runLanguageLibraryAction(action?: LanguageLibraryAction): Promise<LanguageLibraryStatus>;
   setShortcutRecording(recording: boolean): Promise<void>; getSessionSettings(): Promise<CaptureSettings>;
+  getSessionState(): Promise<{ settings: CaptureSettings; library: LanguageLibrary }>;
   saveSessionSettings(settings: Partial<CaptureSettings>): Promise<CaptureSettings>; resetSessionSettings(): Promise<void>;
   start(settings: CaptureSettings): Promise<void>; stop(): Promise<void>; clear(): Promise<void>;
   resizeOverlay(height: number): void; showControls(): Promise<void>; showSettings(): Promise<void>;
@@ -53,6 +60,7 @@ interface CaptionsBridge {
   onOnboardingModelStatus(listener: (status: ModelPreparationStatus) => void): () => void;
   onStatus(listener: (status: CaptureStatus) => void): () => void;
   onSessionSettings(listener: (settings: CaptureSettings) => void): () => void;
+  onLanguageLibrary(listener: (library: LanguageLibrary) => void): () => void;
   onUpdaterState(listener: (state: UpdaterState) => void): () => void;
   onCaption(listener: (state: CaptionState) => void): () => void;
   onDebug(listener: (event: CaptionDebugEvent) => void): () => void;

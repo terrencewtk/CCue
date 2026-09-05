@@ -111,3 +111,93 @@ test("preserves newly discovered canonical language selections", () => {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   }
 });
+
+test("migrates legacy settings once with built-ins plus canonical active selections", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    fs.writeFileSync(path.join(userDataPath, "settings.json"), JSON.stringify({
+      language: "fr-fr", translationLanguage: "ar", overlayLineCount: 2,
+      globalShortcut: null
+    }));
+    const store = loadSettingsStore(userDataPath);
+    const migrated = store.readSettingsSnapshot();
+    assert.deepEqual(migrated.library.enabledTranscriptionLanguages, [
+      "zh-CN", "en-US", "ja-JP", "ko-KR", "fr-FR"
+    ]);
+    assert.deepEqual(migrated.library.enabledTranslationLanguages, [
+      "zh-CN", "zh-TW", "en-US", "ja-JP", "ko-KR", "ar"
+    ]);
+    store.writeSettingsSnapshot(migrated);
+    const record = JSON.parse(fs.readFileSync(path.join(userDataPath, "settings.json"), "utf8"));
+    assert.equal(record.languageLibrary.version, 1);
+    assert.equal("readiness" in record, false);
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});
+
+test("does not silently expand an existing versioned library", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    fs.writeFileSync(path.join(userDataPath, "settings.json"), JSON.stringify({
+      language: "fr-FR", translationLanguage: "ar",
+      languageLibrary: {
+        version: 1,
+        enabledTranscriptionLanguages: ["en-us", "en-US", "bad_locale"],
+        enabledTranslationLanguages: []
+      }
+    }));
+    const snapshot = loadSettingsStore(userDataPath).readSettingsSnapshot();
+    assert.deepEqual(snapshot.library.enabledTranscriptionLanguages, ["en-US"]);
+    assert.deepEqual(snapshot.library.enabledTranslationLanguages, []);
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});
+
+test("writes complete capture fields and library atomically", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    const store = loadSettingsStore(userDataPath);
+    store.writeSettingsSnapshot({
+      settings: {
+        language: "ko-KR", translationEnabled: false, translationLanguage: "en-US",
+        overlayLineCount: 1, globalShortcut: "Command+Alt+C"
+      },
+      library: {
+        version: 1,
+        enabledTranscriptionLanguages: ["ko-KR"],
+        enabledTranslationLanguages: []
+      }
+    });
+    const record = JSON.parse(fs.readFileSync(path.join(userDataPath, "settings.json"), "utf8"));
+    assert.deepEqual(Object.keys(record).sort(), [
+      "globalShortcut", "language", "languageLibrary", "overlayLineCount",
+      "translationEnabled", "translationLanguage"
+    ]);
+    assert.equal(fs.existsSync(path.join(userDataPath, "settings.json.tmp")), false);
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});
+
+test("onboarding seeds active choices atomically and supports transcription only", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    const { createOnboardingSnapshot } = loadSettingsStore(userDataPath);
+    const translated = createOnboardingSnapshot({
+      language: "fr-fr", translationEnabled: true, translationLanguage: "ar"
+    });
+    assert.deepEqual(translated.library.enabledTranscriptionLanguages, ["fr-FR"]);
+    assert.deepEqual(translated.library.enabledTranslationLanguages, ["ar"]);
+    assert.deepEqual(createOnboardingSnapshot(translated.settings), translated);
+    const captionsOnly = createOnboardingSnapshot({
+      language: "ko-kr", translationEnabled: false, translationLanguage: "en-us"
+    });
+    assert.deepEqual(captionsOnly.library.enabledTranscriptionLanguages, ["ko-KR"]);
+    assert.deepEqual(captionsOnly.library.enabledTranslationLanguages, []);
+    assert.equal(captionsOnly.settings.translationEnabled, false);
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});

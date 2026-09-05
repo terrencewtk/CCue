@@ -5,9 +5,6 @@ export interface LanguageModel {
   searchText: string;
 }
 
-export const LEGACY_TRANSCRIPTION_LANGUAGES = ["zh-CN", "en-US", "ja-JP", "ko-KR"];
-export const LEGACY_TRANSLATION_LANGUAGES = ["zh-CN", "zh-TW", "en-US", "ja-JP", "ko-KR"];
-
 export function canonicalLanguageIdentifier(value: string): string | undefined {
   try {
     return Intl.getCanonicalLocales(value)[0];

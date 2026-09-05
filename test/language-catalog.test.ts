@@ -5,6 +5,7 @@ import {
   filterLanguages,
   languageModels,
   resolveLanguageSelection,
+  resolveTranslationLanguageSelection,
   sameTranslationLanguage
 } from "../renderer/language-catalog";
 
@@ -43,4 +44,10 @@ test("translation language equality distinguishes Chinese scripts", () => {
   assert.equal(sameTranslationLanguage("zh-CN", "zh-Hans"), true);
   assert.equal(sameTranslationLanguage("zh-TW", "zh-Hant"), true);
   assert.equal(sameTranslationLanguage("zh-Hans", "zh-Hant"), false);
+});
+
+test("translation selection never invents a target", () => {
+  assert.equal(resolveTranslationLanguageSelection("en-US", "ja-JP", [], "en-US"), null);
+  assert.equal(resolveTranslationLanguageSelection("en-US", "ja-JP", ["fr"], "en-US"), "fr");
+  assert.equal(resolveTranslationLanguageSelection("zh-CN", "zh-Hans", ["zh-CN"], "en-US"), null);
 });

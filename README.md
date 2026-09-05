@@ -27,12 +27,12 @@ CCue is a free and open-source macOS app that turns the audio playing on your Ma
 
 ## Language support
 
-CCue exposes the full language catalog reported by Apple on the current Mac, rather than shipping a fixed list. The catalog includes English, Chinese, and Japanese when those languages are supported by the installed OS and hardware.
+CCue can add any language reported by Apple on the current Mac. Normal caption menus stay fast and predictable by showing only your small, persisted enabled-language library; Apple’s complete runtime catalog is fetched only during onboarding or when you choose **Add Language…** in Settings.
 
 - Transcription languages come from [`SpeechTranscriber.supportedLocales`](https://developer.apple.com/documentation/speech/speechtranscriber/supportedlocales). These are the on-device models that are installed or downloadable for the current device.
 - Translation languages come from [`LanguageAvailability.supportedLanguages`](https://developer.apple.com/documentation/translation/languageavailability/supportedlanguages). CCue also checks [`status(from:to:)`](https://developer.apple.com/documentation/translation/languageavailability/status(from:to:)) so it only offers target languages Apple reports as valid for the selected spoken language.
 
-Apple can add languages through OS updates, and availability can vary by macOS version, hardware, installed assets, and source/target pair. Searchable, scrollable selectors in onboarding and Settings always use the current runtime result. See [Language support](docs/language-support.md) for implementation details.
+Apple can add languages through OS updates, and availability can vary by macOS version, hardware, installed assets, and source/target pair. The onboarding and Add Language selectors are searchable and scrollable. Enabling a language does not download its model; readiness remains runtime-only and is checked for the relevant enabled or selected languages. See [Language support](docs/language-support.md) for implementation details.
 
 ## Requirements
 
@@ -82,7 +82,7 @@ npm run start:electron
 4. Play audio on your Mac and select **Start captions**.
 5. Select **Stop captions**, or use the global shortcut, to end the session. The default is <kbd>Command</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>.
 
-Open **CCue → Settings…** or press <kbd>Command</kbd> + <kbd>,</kbd> to manage models, translation, the keyboard shortcut, and the number of visible caption rows. macOS may request permission to capture system audio.
+Open **CCue → Settings…** or press <kbd>Command</kbd> + <kbd>,</kbd> to add or disable languages, manage their models, change the keyboard shortcut, and set the number of visible caption rows. The active source, target, and translation toggle remain session controls in the main window. macOS may request permission to capture system audio.
 
 ## Privacy and security
 

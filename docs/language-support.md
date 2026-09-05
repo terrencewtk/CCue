@@ -1,6 +1,6 @@
 # Language support
 
-CCue does not maintain an exhaustive language allowlist. At runtime, its Swift helpers query the same Apple frameworks used for transcription and translation, then pass canonical identifiers to the app UI.
+CCue does not maintain an exhaustive language allowlist. Its Swift helpers can query the same Apple frameworks used for transcription and translation, but the complete catalog is fetched only during onboarding and Settings **Add Language…**. Normal menus render a small persisted enabled-language library immediately.
 
 ## Transcription
 
@@ -10,12 +10,14 @@ Apple documents these APIs in [SpeechTranscriber](https://developer.apple.com/do
 
 ## Translation
 
-CCue uses Apple's Translation framework. `LanguageAvailability.supportedLanguages` provides the runtime language catalog. A language appearing in that catalog does not imply that every possible pair is supported, so CCue asks `LanguageAvailability.status(from:to:)` about targets for the selected transcription language and omits `.unsupported` pairs.
+CCue uses Apple's Translation framework. `LanguageAvailability.supportedLanguages` provides the runtime language catalog. Translation targets are enabled globally, but a language appearing in that catalog does not imply that every possible pair is supported. CCue asks `LanguageAvailability.status(from:to:)` for the current source/target pair and never substitutes an unsupported target.
 
 Apple documents the catalog and pair check in [LanguageAvailability](https://developer.apple.com/documentation/translation/languageavailability).
 
 ## Identifiers and saved settings
 
-Framework identifiers are canonicalized as BCP 47 tags, deduplicated, named with the user's locale, and sorted with a locale-aware collator. Saved selections from earlier CCue versions remain valid. If Apple reports the same language with a different regional identifier (for example, `en` instead of `en-US`), CCue selects the equivalent runtime entry. Simplified and Traditional Chinese remain distinct.
+Framework identifiers are canonicalized as BCP 47 tags, deduplicated, named with the user's locale, and sorted with a locale-aware collator. Existing users are migrated once with CCue’s earlier built-ins plus their stored source and target. After that, the versioned library changes only through onboarding or explicit Settings actions. Simplified and Traditional Chinese remain distinct.
+
+Model readiness is never persisted. The control window checks only its selected transcription language and, when translation is enabled, its selected pair. Settings checks only enabled library members. Start remains unavailable during checks or when a required model is missing, and capture performs one final validation immediately before starting.
 
 English, Chinese, and Japanese are representative examples, not a hard-coded promise or an exhaustive list. The exact choices may change after an OS update or across Macs because Apple determines support from the OS, hardware, downloadable assets, and translation pair.

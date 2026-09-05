@@ -17,6 +17,19 @@ export interface CaptureSettings {
   globalShortcut: string | null;
 }
 
+export const LANGUAGE_LIBRARY_VERSION = 1;
+
+export interface LanguageLibrary {
+  version: typeof LANGUAGE_LIBRARY_VERSION;
+  enabledTranscriptionLanguages: string[];
+  enabledTranslationLanguages: string[];
+}
+
+export interface SettingsSnapshot {
+  settings: CaptureSettings;
+  library: LanguageLibrary;
+}
+
 export interface ModelAvailability {
   installed: boolean;
   supported: boolean;
@@ -28,11 +41,10 @@ export interface ModelLanguageState {
   availability: ModelAvailability;
 }
 
-export interface ModelSettingsResult {
-  settings: CaptureSettings;
+export interface LanguageLibraryStatus {
+  library: LanguageLibrary;
   transcription: ModelLanguageState[];
   translation: ModelLanguageState[];
-  selectedTranslationLanguage: string | null;
 }
 
 export interface CaptionUtterance {

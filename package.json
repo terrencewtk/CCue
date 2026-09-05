@@ -15,6 +15,7 @@
   },
   "main": "build/electron/main.js",
   "scripts": {
+    "postinstall": "patch-package",
     "electron:clean": "node -e \"require('node:fs').rmSync('build/electron', { recursive: true, force: true })\"",
     "electron:build": "npm run electron:clean && tsc --project tsconfig.json",
     "electron:check": "tsc --project tsconfig.json --noEmit",
@@ -48,6 +49,7 @@
     "@types/node": "26.1.1",
     "electron": "39.8.10",
     "electron-builder": "26.15.3",
+    "patch-package": "8.0.1",
     "typescript": "7.0.2"
   },
   "build": {

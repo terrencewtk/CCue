@@ -1,15 +1,23 @@
+import { createModelChecker } from "./model-availability.js";
 import {
-  TRANSCRIPTION_LANGUAGES,
-  TRANSLATION_LANGUAGES,
-  createModelChecker,
+  LEGACY_TRANSCRIPTION_LANGUAGES,
+  LEGACY_TRANSLATION_LANGUAGES,
+  filterLanguages,
+  languageModels,
+  resolveLanguageSelection,
+  sameTranslationLanguage,
   type LanguageModel
-} from "./model-availability.js";
+} from "./language-catalog.js";
 import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
 
 const translationEnabled = document.querySelector<HTMLInputElement>("#translationEnabled")!;
 const overlayLineCount = document.querySelector<HTMLSelectElement>("#overlayLineCount")!;
 const transcriptionModels = document.querySelector<HTMLElement>("#transcriptionModels")!;
 const translationModels = document.querySelector<HTMLElement>("#translationModels")!;
+const transcriptionSearch = document.querySelector<HTMLInputElement>("#transcriptionSearch")!;
+const translationSearch = document.querySelector<HTMLInputElement>("#translationSearch")!;
+const transcriptionEmpty = document.querySelector<HTMLElement>("#transcriptionEmpty")!;
+const translationEmpty = document.querySelector<HTMLElement>("#translationEmpty")!;
 const notice = document.querySelector<HTMLElement>("#notice")!;
 const shortcutRecorder = document.querySelector<HTMLButtonElement>("#shortcutRecorder")!;
 const shortcutRemove = document.querySelector<HTMLButtonElement>("#shortcutRemove")!;
@@ -20,6 +28,8 @@ const modelChecker = createModelChecker(window.captions);
 
 let selectedLanguage = "ja-JP";
 let selectedTranslationLanguage = "en-US";
+let transcriptionLanguages: LanguageModel[] = [];
+let translationLanguages: LanguageModel[] = [];
 type ModelKind = "transcription" | "translation";
 type ModelState = "checking" | "ready" | "missing" | "downloading" | "unavailable" | "check-error" | "error" | "deleting" | "delete-error";
 type IconName = "checking" | "ready" | "missing" | "error" | "download" | "retry" | "trash";
@@ -89,9 +99,26 @@ function modelRow(model: LanguageModel, kind: ModelKind): HTMLElement {
 }
 
 function renderModelLists(): void {
-  transcriptionModels.replaceChildren(...TRANSCRIPTION_LANGUAGES.map((model) => modelRow(model, "transcription")));
-  translationModels.replaceChildren(...TRANSLATION_LANGUAGES.map((model) => modelRow(model, "translation")));
+  transcriptionModels.replaceChildren(...transcriptionLanguages.map((model) => modelRow(model, "transcription")));
+  translationModels.replaceChildren(...translationLanguages.map((model) => modelRow(model, "translation")));
+  applyModelFilter("transcription");
+  applyModelFilter("translation");
   updateTranslationControls();
+}
+
+function applyModelFilter(kind: ModelKind): void {
+  const models = kind === "transcription" ? transcriptionLanguages : translationLanguages;
+  const search = kind === "transcription" ? transcriptionSearch : translationSearch;
+  const list = kind === "transcription" ? transcriptionModels : translationModels;
+  const empty = kind === "transcription" ? transcriptionEmpty : translationEmpty;
+  const visible = new Set(filterLanguages(models, search.value).map((model) => model.value));
+  list.querySelectorAll<HTMLElement>(".model-row").forEach((row) => {
+    row.classList.toggle("hidden", !visible.has(row.dataset.language ?? ""));
+  });
+  empty.textContent = models.length
+    ? `No ${kind} languages match your search.`
+    : `Apple reported no ${kind} languages available on this Mac.`;
+  empty.classList.toggle("hidden", visible.size > 0);
 }
 
 function findRow(kind: ModelKind, value: string): HTMLElement | undefined {
@@ -106,9 +133,9 @@ function applyAvailability(kind: ModelKind, value: string, availability: ModelAv
     setModelState(kind, value, availability.installed ? "ready" : "missing");
     return;
   }
-  const target = (kind === "transcription" ? TRANSCRIPTION_LANGUAGES : TRANSLATION_LANGUAGES)
+  const target = (kind === "transcription" ? transcriptionLanguages : translationLanguages)
     .find((model) => model.value === value)?.name || value;
-  const source = TRANSCRIPTION_LANGUAGES.find((model) => model.value === selectedLanguage)?.name
+  const source = transcriptionLanguages.find((model) => model.value === selectedLanguage)?.name
     || selectedLanguage;
   const detail = kind === "translation"
     ? `Apple Translation reported that ${source} to ${target} is not supported on this Mac.`
@@ -125,7 +152,7 @@ function setModelState(kind: ModelKind, value: string, state: ModelState, detail
   const progress = row.querySelector<HTMLElement>(".model-progress")!;
   const progressFill = progress.querySelector<HTMLElement>("span")!;
   const explanation = row.querySelector<HTMLElement>(".model-explanation")!;
-  const model = (kind === "transcription" ? TRANSCRIPTION_LANGUAGES : TRANSLATION_LANGUAGES)
+  const model = (kind === "transcription" ? transcriptionLanguages : translationLanguages)
     .find((candidate) => candidate.value === value)!;
   const stateView: [IconName, string] = ({
     checking: ["checking", "Checking"],
@@ -232,10 +259,14 @@ function stopShortcutRecording(): void {
 function updateTranslationControls(): void {
   translationModels.classList.toggle("disabled", !translationEnabled.checked);
   translationModels.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((control) => {
-    const sameAsSource = control.closest<HTMLElement>(".model-row")?.dataset.language === selectedLanguage;
+    const target = control.closest<HTMLElement>(".model-row")?.dataset.language ?? "";
+    const sameAsSource = target ? sameTranslationLanguage(target, selectedLanguage) : false;
     control.disabled = !translationEnabled.checked || sameAsSource || Boolean(activeDownload);
   });
-  const sameLanguageRow = findRow("translation", selectedLanguage);
+  const sameLanguageRow = translationLanguages
+    .find((model) => sameTranslationLanguage(model.value, selectedLanguage))
+    ? findRow("translation", translationLanguages.find((model) => sameTranslationLanguage(model.value, selectedLanguage))!.value)
+    : undefined;
   if (sameLanguageRow) {
     const status = sameLanguageRow.querySelector<HTMLElement>(".model-status")!;
     const explanation = sameLanguageRow.querySelector<HTMLElement>(".model-explanation")!;
@@ -253,8 +284,8 @@ function updateTranslationControls(): void {
 async function selectModel(kind: ModelKind, value: string): Promise<void> {
   if (kind === "transcription") {
     selectedLanguage = value;
-    if (selectedTranslationLanguage === value) {
-      selectedTranslationLanguage = TRANSLATION_LANGUAGES.find((model) => model.value !== value)?.value || "en-US";
+    if (sameTranslationLanguage(selectedTranslationLanguage, value)) {
+      selectedTranslationLanguage = translationLanguages.find((model) => !sameTranslationLanguage(model.value, value))?.value || "en-US";
       const nextTarget = findRow("translation", selectedTranslationLanguage)?.querySelector<HTMLInputElement>("input");
       if (nextTarget) nextTarget.checked = true;
     }
@@ -269,7 +300,7 @@ async function selectModel(kind: ModelKind, value: string): Promise<void> {
 
 async function refreshModels(): Promise<void> {
   const generation = ++refreshGeneration;
-  for (const model of TRANSCRIPTION_LANGUAGES) {
+  for (const model of transcriptionLanguages) {
     setModelState("transcription", model.value, "checking");
     try {
       const result = await runModelOperation(() => (
@@ -287,11 +318,19 @@ async function refreshModels(): Promise<void> {
 
 async function refreshTranslationModels(existingGeneration?: number): Promise<void> {
   const generation = existingGeneration ?? ++refreshGeneration;
-  for (const model of TRANSLATION_LANGUAGES) {
-    if (model.value === selectedLanguage) {
-      updateTranslationControls();
-      continue;
-    }
+  let identifiers: string[];
+  try {
+    identifiers = await runModelOperation(() => window.captions.getTranslationLanguages(selectedLanguage));
+  } catch (error) {
+    showError(error);
+    identifiers = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, selectedLanguage));
+  }
+  if (generation !== refreshGeneration) return;
+  translationLanguages = languageModels(identifiers);
+  selectedTranslationLanguage = resolveLanguageSelection(selectedTranslationLanguage, identifiers, "en-US");
+  translationModels.replaceChildren(...translationLanguages.map((model) => modelRow(model, "translation")));
+  applyModelFilter("translation");
+  for (const model of translationLanguages) {
     setModelState("translation", model.value, "checking");
     try {
       const sourceLanguage = selectedLanguage;
@@ -350,7 +389,7 @@ async function downloadModel(kind: ModelKind, value: string): Promise<void> {
 
 async function deleteModel(kind: ModelKind, value: string): Promise<void> {
   if (kind !== "transcription" || activeDownload) return;
-  const model = TRANSCRIPTION_LANGUAGES.find((candidate) => candidate.value === value)!;
+  const model = transcriptionLanguages.find((candidate) => candidate.value === value)!;
   if (!window.confirm(`Delete the ${model.name} transcription model? You can download it again later.`)) return;
 
   activeDownload = { kind, value };
@@ -394,16 +433,26 @@ if (!window.captions) {
   showError("Electron preload bridge is unavailable. Restart the app or reinstall this build.");
   document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>("input, select, button").forEach((control) => { control.disabled = true; });
 } else {
-  window.captions.getSettings().then((stored) => {
+  transcriptionEmpty.textContent = "Loading Apple transcription languages…";
+  transcriptionEmpty.classList.remove("hidden");
+  translationEmpty.textContent = "Select a spoken language to load valid translation targets.";
+  translationEmpty.classList.remove("hidden");
+  window.captions.getSettings().then(async (stored) => {
     selectedLanguage = stored.language || "ja-JP";
     translationEnabled.checked = stored.translationEnabled !== false;
     selectedTranslationLanguage = stored.translationLanguage || "en-US";
     selectedShortcut = stored.globalShortcut === null
       ? null
       : stored.globalShortcut || DEFAULT_SHORTCUT;
-    if (selectedTranslationLanguage === selectedLanguage) {
-      selectedTranslationLanguage = TRANSLATION_LANGUAGES.find((model) => model.value !== selectedLanguage)?.value || "en-US";
+    let transcriptionIdentifiers: string[];
+    try {
+      transcriptionIdentifiers = await window.captions.getTranscriptionLanguages();
+    } catch (error) {
+      showError(error);
+      transcriptionIdentifiers = [...LEGACY_TRANSCRIPTION_LANGUAGES];
     }
+    transcriptionLanguages = languageModels(transcriptionIdentifiers);
+    selectedLanguage = resolveLanguageSelection(selectedLanguage, transcriptionIdentifiers, "en-US");
     overlayLineCount.value = String(stored.overlayLineCount || 3);
     renderShortcut();
     renderModelLists();
@@ -416,6 +465,8 @@ if (!window.captions) {
     updateTranslationControls();
     persistSettings();
   });
+  transcriptionSearch.addEventListener("input", () => applyModelFilter("transcription"));
+  translationSearch.addEventListener("input", () => applyModelFilter("translation"));
 
   shortcutRecorder.addEventListener("click", () => {
     recordingShortcut = true;

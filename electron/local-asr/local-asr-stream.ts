@@ -30,10 +30,23 @@ export class LocalAsrStream {
   private process?: ChildProcessWithoutNullStreams;
   private opening?: { resolve: () => void; reject: (error: Error) => void };
   private availability?: { resolve: (availability: ModelAvailability) => void; reject: (error: Error) => void };
+  private languages?: { resolve: (languages: string[]) => void; reject: (error: Error) => void };
   private releasing?: { resolve: (released: boolean) => void; reject: (error: Error) => void };
   private stopping?: { resolve: () => void; timer: NodeJS.Timeout };
 
   constructor(private readonly callbacks: LocalAsrCallbacks) {}
+
+  async supportedLanguages(): Promise<string[]> {
+    this.close();
+    const helper = this.launchHelper();
+    const result = new Promise<string[]>((resolve, reject) => {
+      this.languages = { resolve, reject };
+    });
+    helper.stdin.write(`${JSON.stringify({ command: "languages" })}\n`);
+    return result.finally(() => {
+      if (this.process === helper) this.close();
+    });
+  }
 
   async checkAvailability(language: string): Promise<ModelAvailability> {
     this.close();
@@ -109,6 +122,10 @@ export class LocalAsrStream {
       this.availability.reject(new Error("Local transcription availability check was cancelled"));
       this.availability = undefined;
     }
+    if (this.languages) {
+      this.languages.reject(new Error("Local transcription language discovery was cancelled"));
+      this.languages = undefined;
+    }
     if (this.releasing) {
       this.releasing.reject(new Error("Local transcription model deletion was cancelled"));
       this.releasing = undefined;
@@ -132,6 +149,9 @@ export class LocalAsrStream {
       console.info("[local-asr] Model ready");
       this.opening?.resolve();
       this.opening = undefined;
+    } else if (event.type === "languages") {
+      this.languages?.resolve(event.languages ?? []);
+      this.languages = undefined;
     } else if (event.type === "availability") {
       this.availability?.resolve({
         installed: event.installed === true,
@@ -169,6 +189,7 @@ export class LocalAsrStream {
   private fail(message: string): void {
     const wasOpening = this.opening !== undefined;
     const wasCheckingAvailability = this.availability !== undefined;
+    const wasDiscoveringLanguages = this.languages !== undefined;
     const wasReleasing = this.releasing !== undefined;
     if (this.opening) {
       this.opening.reject(new Error(message));
@@ -178,11 +199,15 @@ export class LocalAsrStream {
       this.availability.reject(new Error(message));
       this.availability = undefined;
     }
+    if (this.languages) {
+      this.languages.reject(new Error(message));
+      this.languages = undefined;
+    }
     if (this.releasing) {
       this.releasing.reject(new Error(message));
       this.releasing = undefined;
     }
-    if (!wasOpening && !wasCheckingAvailability && !wasReleasing) {
+    if (!wasOpening && !wasCheckingAvailability && !wasDiscoveringLanguages && !wasReleasing) {
       this.callbacks.onFailure(message);
     }
   }
@@ -200,7 +225,7 @@ export class LocalAsrStream {
     helper.on("exit", (code) => {
       const wasCurrentHelper = this.process === helper;
       if (wasCurrentHelper) this.process = undefined;
-      if (wasCurrentHelper && (this.opening || this.availability || this.releasing)) {
+      if (wasCurrentHelper && (this.opening || this.languages || this.availability || this.releasing)) {
         this.fail(`Local transcription helper exited (${code ?? "signal"})`);
       }
     });

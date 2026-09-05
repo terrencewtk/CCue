@@ -1,35 +1,28 @@
 import { app } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-import type {
-  CaptureSettings,
-  CaptureSettingsInput,
-  TranscriptionLanguage,
-  TranslationLanguage
-} from "../shared/types";
-
-const transcriptionLanguages = new Set<TranscriptionLanguage>([
-  "ja-JP", "en-US", "zh-CN", "ko-KR"
-]);
-const translationLanguages = new Set<TranslationLanguage>([
-  "ja-JP", "en-US", "zh-CN", "zh-TW", "ko-KR"
-]);
+import type { CaptureSettings, CaptureSettingsInput } from "../shared/types";
 const DEFAULT_OVERLAY_LINE_COUNT = 3;
 const MIN_OVERLAY_LINE_COUNT = 1;
 const MAX_OVERLAY_LINE_COUNT = 3;
 export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+L";
 const shortcutModifiers = new Set(["CommandOrControl", "Command", "Control", "Alt", "Shift"]);
 
-function normalizeLanguage(value: unknown): TranscriptionLanguage {
-  return transcriptionLanguages.has(value as TranscriptionLanguage)
-    ? value as TranscriptionLanguage
-    : "ja-JP";
+function normalizeLocaleIdentifier(value: unknown, fallback: string): string {
+  if (typeof value !== "string" || value.length > 64) return fallback;
+  try {
+    return Intl.getCanonicalLocales(value)[0] ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-function normalizeTranslationLanguage(value: unknown): TranslationLanguage {
-  return translationLanguages.has(value as TranslationLanguage)
-    ? value as TranslationLanguage
-    : "en-US";
+function normalizeLanguage(value: unknown): string {
+  return normalizeLocaleIdentifier(value, "ja-JP");
+}
+
+function normalizeTranslationLanguage(value: unknown): string {
+  return normalizeLocaleIdentifier(value, "en-US");
 }
 
 function normalizeOverlayLineCount(value: unknown): number {

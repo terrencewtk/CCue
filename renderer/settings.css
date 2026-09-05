@@ -131,8 +131,11 @@ nav { display: grid; gap: 3px; }
 .shortcut-recorder:focus-visible,
 .shortcut-remove:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--color-focus-ring); }
 
-.model-list { transition: opacity var(--transition-fast); }
+.language-list-shell { overflow: hidden; }
+.model-search { width: calc(100% - 24px); margin: 12px; }
+.model-list { max-height: 330px; overflow-y: auto; overscroll-behavior: contain; transition: opacity var(--transition-fast); }
 .model-list.disabled { opacity: .48; }
+.language-empty { margin: 0; padding: 28px 18px; color: var(--color-text-muted); text-align: center; }
 .model-row {
   display: flex;
   min-height: 66px;

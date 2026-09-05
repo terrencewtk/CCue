@@ -38,6 +38,14 @@ export class ModelPreparationController {
     return this.enqueue("transcription", () => this.transcription.checkAvailability(language));
   }
 
+  async transcriptionLanguages(): Promise<string[]> {
+    return this.enqueue("transcription", () => this.transcription.supportedLanguages());
+  }
+
+  async translationLanguages(sourceLanguage?: string): Promise<string[]> {
+    return this.enqueue("translation", () => this.translation.supportedLanguages(sourceLanguage));
+  }
+
   async translationAvailability(
     sourceLanguage: string,
     targetLanguage: string

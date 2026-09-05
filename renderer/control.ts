@@ -1,10 +1,15 @@
 import {
-  TRANSCRIPTION_LANGUAGES,
-  TRANSLATION_LANGUAGES,
   createModelChecker,
-  isReady,
-  type LanguageModel
+  isReady
 } from "./model-availability.js";
+import {
+  LEGACY_TRANSCRIPTION_LANGUAGES,
+  LEGACY_TRANSLATION_LANGUAGES,
+  languageModels,
+  resolveLanguageSelection,
+  sameTranslationLanguage,
+  type LanguageModel
+} from "./language-catalog.js";
 
 const captureButton = document.querySelector<HTMLButtonElement>("#captureButton")!;
 const settingsButton = document.querySelector<HTMLButtonElement>("#settingsButton")!;
@@ -24,6 +29,8 @@ let sessionSettingsLoaded = false;
 let translationModelsAvailable = false;
 let availabilityRefresh: Promise<void> | undefined;
 let availabilityGeneration = 0;
+let transcriptionLanguages: LanguageModel[] = [];
+let translationLanguages: LanguageModel[] = [];
 
 function placeholderOption(select: HTMLSelectElement, label: string): void {
   const option = document.createElement("option");
@@ -65,7 +72,7 @@ async function confirmedReady(check: () => Promise<ModelAvailability>): Promise<
 
 async function readyTranscriptionLanguages(): Promise<Set<string>> {
   const ready = new Set<string>();
-  for (const model of TRANSCRIPTION_LANGUAGES) {
+  for (const model of transcriptionLanguages) {
     if (await confirmedReady(() => modelChecker.transcription(model.value))) ready.add(model.value);
   }
   return ready;
@@ -73,8 +80,8 @@ async function readyTranscriptionLanguages(): Promise<Set<string>> {
 
 async function readyTranslationLanguages(sourceLanguage: string): Promise<Set<string>> {
   const ready = new Set<string>();
-  for (const model of TRANSLATION_LANGUAGES) {
-    if (model.value === sourceLanguage) continue;
+  for (const model of translationLanguages) {
+    if (sameTranslationLanguage(model.value, sourceLanguage)) continue;
     if (await confirmedReady(() => modelChecker.translation(sourceLanguage, model.value))) {
       ready.add(model.value);
     }
@@ -86,13 +93,20 @@ async function refreshTranslationOptions(sourceLanguage: string, preferredTarget
   placeholderOption(sessionTranslationLanguage, "Checking downloaded models…");
   translationModelsAvailable = false;
   updateSessionControls();
+  let identifiers: string[];
+  try {
+    identifiers = await window.captions.getTranslationLanguages(sourceLanguage);
+  } catch {
+    identifiers = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, sourceLanguage));
+  }
+  translationLanguages = languageModels(identifiers);
   const ready = await readyTranslationLanguages(sourceLanguage);
   if (generation !== availabilityGeneration) return;
   const selected = populateReadyOptions(
     sessionTranslationLanguage,
-    TRANSLATION_LANGUAGES,
+    translationLanguages,
     ready,
-    preferredTarget
+    resolveLanguageSelection(preferredTarget, identifiers, "en-US")
   );
   translationModelsAvailable = Boolean(selected);
   if (!translationModelsAvailable) sessionTranslationEnabled.checked = false;
@@ -107,13 +121,20 @@ async function refreshReadyModels(settings: CaptureSettings): Promise<void> {
   updateSessionControls();
 
   availabilityRefresh = (async () => {
+    let transcriptionIdentifiers: string[];
+    try {
+      transcriptionIdentifiers = await window.captions.getTranscriptionLanguages();
+    } catch {
+      transcriptionIdentifiers = [...LEGACY_TRANSCRIPTION_LANGUAGES];
+    }
+    transcriptionLanguages = languageModels(transcriptionIdentifiers);
     const readyTranscription = await readyTranscriptionLanguages();
     if (generation !== availabilityGeneration) return;
     const selectedLanguage = populateReadyOptions(
       sessionLanguage,
-      TRANSCRIPTION_LANGUAGES,
+      transcriptionLanguages,
       readyTranscription,
-      settings.language || "ja-JP"
+      resolveLanguageSelection(settings.language || "ja-JP", transcriptionIdentifiers, "en-US")
     );
     sessionTranslationEnabled.checked = settings.translationEnabled !== false;
     if (selectedLanguage) {

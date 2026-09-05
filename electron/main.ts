@@ -16,6 +16,15 @@ let sessionSettings: CaptureSettings;
 let onboardingCompleted = false;
 let registeredShortcut: string | null = null;
 const shortcutRecordingSenders = new Set<number>();
+const languagePreview = process.env.CCUE_LANGUAGE_PREVIEW === "1";
+const previewTranscriptionLanguages = [
+  "ar-SA", "zh-CN", "zh-TW", "en-AU", "en-GB", "en-US", "fr-FR", "de-DE",
+  "it-IT", "ja-JP", "ko-KR", "pt-BR", "es-ES"
+];
+const previewTranslationLanguages = [
+  "ar", "zh-Hans", "zh-Hant", "nl", "en", "fr", "de", "hi", "id", "it", "ja",
+  "ko", "pl", "pt", "ru", "es", "th", "tr", "uk", "vi"
+];
 
 function toggleCaptions(): void {
   if (shortcutRecordingSenders.size) return;
@@ -106,13 +115,25 @@ void app.whenReady().then(() => {
     }
   });
   ipcMain.handle("onboarding:get", () => ({ settings: readSettings() }));
+  ipcMain.handle("models:transcription-languages", () => (
+    languagePreview ? previewTranscriptionLanguages : modelPreparation.transcriptionLanguages()
+  ));
+  ipcMain.handle("models:translation-languages", (_event, sourceLanguage?: string) => (
+    languagePreview
+      ? previewTranslationLanguages.filter((language) => !sourceLanguage?.toLowerCase().startsWith(language.toLowerCase()))
+      : modelPreparation.translationLanguages(sourceLanguage)
+  ));
   ipcMain.handle("onboarding:transcription-availability", (_event, language: string) => {
-    return modelPreparation.transcriptionAvailability(language);
+    return languagePreview
+      ? { installed: ["en-US", "ja-JP"].includes(language), supported: true, deletable: false }
+      : modelPreparation.transcriptionAvailability(language);
   });
   ipcMain.handle(
     "onboarding:translation-availability",
     (_event, sourceLanguage: string, targetLanguage: string) => (
-      modelPreparation.translationAvailability(sourceLanguage, targetLanguage)
+      languagePreview
+        ? { installed: ["en", "ja"].includes(targetLanguage), supported: true, deletable: false }
+        : modelPreparation.translationAvailability(sourceLanguage, targetLanguage)
     )
   );
   ipcMain.handle("onboarding:prepare-transcription", (_event, language: string) => {

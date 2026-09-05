@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld("captions", {
   remindUpdateLater: (automaticallyDownload: boolean) => ipcRenderer.invoke("updater:remind-later", automaticallyDownload),
   skipUpdate: (automaticallyDownload: boolean) => ipcRenderer.invoke("updater:skip", automaticallyDownload),
   getOnboardingState: () => ipcRenderer.invoke("onboarding:get"),
+  getTranscriptionLanguages: () => ipcRenderer.invoke("models:transcription-languages"),
+  getTranslationLanguages: (sourceLanguage?: string) => (
+    ipcRenderer.invoke("models:translation-languages", sourceLanguage)
+  ),
   getTranscriptionModelAvailability: (language: string) => (
     ipcRenderer.invoke("onboarding:transcription-availability", language)
   ),

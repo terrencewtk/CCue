@@ -1,12 +1,20 @@
 import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
+import {
+  LEGACY_TRANSCRIPTION_LANGUAGES,
+  LEGACY_TRANSLATION_LANGUAGES,
+  languageModels,
+  resolveLanguageSelection,
+  sameTranslationLanguage
+} from "./language-catalog.js";
+import { LanguagePicker } from "./language-picker.js";
 
 const steps = [...document.querySelectorAll<HTMLElement>(".step")];
 const dots = [...document.querySelectorAll<HTMLElement>(".step-dot")];
 const backButton = document.querySelector<HTMLButtonElement>("#backButton")!;
 const nextButton = document.querySelector<HTMLButtonElement>("#nextButton")!;
 const errorMessage = document.querySelector<HTMLElement>("#onboardingError")!;
-const language = document.querySelector<HTMLSelectElement>("#onboardingLanguage")!;
-const translationLanguage = document.querySelector<HTMLSelectElement>("#onboardingTranslationLanguage")!;
+const language = new LanguagePicker(document.querySelector<HTMLElement>("#onboardingLanguage")!, "spoken languages");
+const translationLanguage = new LanguagePicker(document.querySelector<HTMLElement>("#onboardingTranslationLanguage")!, "translation languages");
 const downloadTranscription = document.querySelector<HTMLButtonElement>("#downloadTranscription")!;
 const transcriptionCard = document.querySelector<HTMLElement>("#transcriptionCard")!;
 const transcriptionStatus = document.querySelector<HTMLElement>("#transcriptionStatus")!;
@@ -158,6 +166,14 @@ async function refreshTranscriptionAvailability() {
 
 async function refreshTranslationAvailability() {
   if (!translationEnabled()) return;
+  if (!translationLanguage.value) {
+    translationCard.classList.add("error");
+    translationStatus.textContent = "Apple reported no translation targets for this spoken language.";
+    downloadTranslation.classList.add("hidden");
+    translationProgress.classList.add("hidden");
+    updateActions();
+    return;
+  }
   showTranslationChecking();
   setPreparing(true);
   try {
@@ -178,16 +194,27 @@ async function refreshTranslationAvailability() {
   }
 }
 
-function updateTargetOptions() {
-  [...translationLanguage.options].forEach((option) => {
-    option.disabled = option.value === language.value;
-  });
-  if (translationLanguage.value === language.value) {
-    const preferredTargets = language.value === "en-US"
-      ? ["zh-CN", "ja-JP", "ko-KR"]
-      : ["en-US", "zh-CN", "ja-JP"];
-    translationLanguage.value = preferredTargets.find((value) => value !== language.value) || "en-US";
-    showTranslationChecking();
+async function updateTargetOptions(preferred = translationLanguage.value || "en-US") {
+  translationLanguage.setMessage("Loading languages…");
+  try {
+    const targets = await window.captions.getTranslationLanguages(language.value);
+    const selectable = targets.filter((target) => !sameTranslationLanguage(target, language.value));
+    if (!selectable.length) {
+      translationLanguage.setMessage("No translation targets");
+      showError("Apple reported no translation targets for this spoken language.");
+      return;
+    }
+    const selected = resolveLanguageSelection(preferred, selectable, "en-US");
+    translationLanguage.setOptions(languageModels(selectable), selected);
+  } catch (error) {
+    const fallbackTargets = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, language.value));
+    if (!fallbackTargets.length) {
+      translationLanguage.setMessage("No translation targets");
+      showError(`Could not refresh Apple translation languages: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    translationLanguage.setOptions(languageModels(fallbackTargets), resolveLanguageSelection(preferred, fallbackTargets, "en-US"));
+    showError(`Could not refresh Apple translation languages: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -196,6 +223,7 @@ function updateTranslationChoice() {
     choice.closest<HTMLElement>(".choice-card")!.classList.toggle("selected", choice.checked);
   });
   translationSetup.classList.toggle("hidden", !translationEnabled());
+  translationLanguage.setDisabled(preparing || !translationEnabled());
   updateActions();
 }
 
@@ -203,8 +231,8 @@ function setPreparing(value: boolean): void {
   preparing = value;
   downloadTranscription.disabled = value;
   downloadTranslation.disabled = value;
-  language.disabled = value;
-  translationLanguage.disabled = value;
+  language.setDisabled(value);
+  translationLanguage.setDisabled(value || !translationEnabled());
   translationChoices.forEach((choice) => { choice.disabled = value; });
   shortcutRecorder.disabled = value;
   shortcutRemove.disabled = value;
@@ -253,12 +281,12 @@ downloadTranslation.addEventListener("click", async () => {
   }
 });
 
-language.addEventListener("change", async () => {
-  updateTargetOptions();
+language.onChange(async () => {
+  await updateTargetOptions();
   await refreshTranscriptionAvailability();
   await refreshTranslationAvailability();
 });
-translationLanguage.addEventListener("change", refreshTranslationAvailability);
+translationLanguage.onChange(() => { void refreshTranslationAvailability(); });
 translationChoices.forEach((choice) => choice.addEventListener("change", async () => {
   updateTranslationChoice();
   await refreshTranslationAvailability();
@@ -366,8 +394,21 @@ if (!window.captions) {
 } else {
   window.captions.onOnboardingModelStatus(handleModelStatus);
   window.captions.getOnboardingState().then(async ({ settings }) => {
-    language.value = settings.language || "en-US";
-    translationLanguage.value = settings.translationLanguage || "zh-CN";
+    let transcription: string[];
+    try {
+      transcription = await window.captions.getTranscriptionLanguages();
+    } catch (error) {
+      transcription = [...LEGACY_TRANSCRIPTION_LANGUAGES];
+      showError(`Could not refresh Apple transcription languages: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (!transcription.length) {
+      language.setMessage("No languages available");
+      translationLanguage.setMessage("No languages available");
+      throw new Error("Apple reported no on-device transcription languages available on this Mac.");
+    }
+    const selectedSource = resolveLanguageSelection(settings.language || "en-US", transcription, "en-US");
+    language.setOptions(languageModels(transcription), selectedSource);
+    await updateTargetOptions(settings.translationLanguage || "en-US");
     translationChoices.forEach((choice) => {
       choice.checked = choice.value === (settings.translationEnabled === false ? "no" : "yes");
     });
@@ -375,7 +416,6 @@ if (!window.captions) {
       ? null
       : settings.globalShortcut || DEFAULT_SHORTCUT;
     renderShortcut();
-    updateTargetOptions();
     updateTranslationChoice();
     await refreshTranscriptionAvailability();
     await refreshTranslationAvailability();

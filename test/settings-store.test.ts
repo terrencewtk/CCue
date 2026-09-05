@@ -95,3 +95,19 @@ test("defaults invalid global shortcuts to Command-Shift-L", () => {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   }
 });
+
+test("preserves newly discovered canonical language selections", () => {
+  const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
+  try {
+    const { normalizeCaptureSettings } = loadSettingsStore(userDataPath);
+    const settings = normalizeCaptureSettings({
+      language: "fr-fr",
+      translationLanguage: "ar"
+    });
+    assert.equal(settings.language, "fr-FR");
+    assert.equal(settings.translationLanguage, "ar");
+    assert.equal(normalizeCaptureSettings({ language: "not_a_locale" }).language, "ja-JP");
+  } finally {
+    fs.rmSync(userDataPath, { recursive: true, force: true });
+  }
+});

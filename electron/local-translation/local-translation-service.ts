@@ -43,11 +43,27 @@ export class LocalTranslationService {
   private process?: ChildProcessWithoutNullStreams;
   private opening?: { resolve: () => void; reject: (error: Error) => void };
   private availability?: { resolve: (availability: ModelAvailability) => void; reject: (error: Error) => void };
+  private languages?: { resolve: (languages: string[]) => void; reject: (error: Error) => void };
   private readonly pending = new Map<number, PendingTranslation>();
   private requestSequence = 0;
   private debugTracePath?: string;
 
   constructor(private readonly callbacks: LocalTranslationCallbacks) {}
+
+  async supportedLanguages(sourceLanguage?: string): Promise<string[]> {
+    this.close();
+    const helper = this.launchHelper();
+    const result = new Promise<string[]>((resolve, reject) => {
+      this.languages = { resolve, reject };
+    });
+    helper.stdin.write(`${JSON.stringify({
+      command: "languages",
+      source_language: sourceLanguage
+    })}\n`);
+    return result.finally(() => {
+      if (this.process === helper) this.close();
+    });
+  }
 
   async checkAvailability(sourceLanguage: string, targetLanguage: string): Promise<ModelAvailability> {
     this.close();
@@ -109,6 +125,8 @@ export class LocalTranslationService {
     this.opening = undefined;
     this.availability?.reject(error);
     this.availability = undefined;
+    this.languages?.reject(error);
+    this.languages = undefined;
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
     this.debugTracePath = undefined;
@@ -127,6 +145,11 @@ export class LocalTranslationService {
       console.info("[local-translation] Model ready");
       this.opening?.resolve();
       this.opening = undefined;
+      return;
+    }
+    if (event.type === "languages") {
+      this.languages?.resolve(event.languages ?? []);
+      this.languages = undefined;
       return;
     }
     if (event.type === "availability") {
@@ -164,6 +187,7 @@ export class LocalTranslationService {
     const error = new Error(message);
     const wasOpening = this.opening !== undefined;
     const wasCheckingAvailability = this.availability !== undefined;
+    const wasDiscoveringLanguages = this.languages !== undefined;
     if (this.opening) {
       this.opening.reject(error);
       this.opening = undefined;
@@ -172,7 +196,11 @@ export class LocalTranslationService {
       this.availability.reject(error);
       this.availability = undefined;
     }
-    if (!wasOpening && !wasCheckingAvailability) {
+    if (this.languages) {
+      this.languages.reject(error);
+      this.languages = undefined;
+    }
+    if (!wasOpening && !wasCheckingAvailability && !wasDiscoveringLanguages) {
       this.callbacks.onFailure(message);
     }
     for (const pending of this.pending.values()) pending.reject(error);
@@ -192,7 +220,7 @@ export class LocalTranslationService {
     helper.on("exit", (code) => {
       const wasCurrentHelper = this.process === helper;
       if (wasCurrentHelper) this.process = undefined;
-      if (wasCurrentHelper && (this.opening || this.availability || this.pending.size)) {
+      if (wasCurrentHelper && (this.opening || this.languages || this.availability || this.pending.size)) {
         this.fail(`Local translation helper exited (${code ?? "signal"})`);
       }
     });

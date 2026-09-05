@@ -1,5 +1,5 @@
-export type TranscriptionLanguage = "ja-JP" | "en-US" | "zh-CN" | "ko-KR";
-export type TranslationLanguage = "ja-JP" | "en-US" | "zh-CN" | "zh-TW" | "ko-KR";
+export type TranscriptionLanguage = string;
+export type TranslationLanguage = string;
 
 export interface CaptureSettingsInput {
   language?: string;
@@ -86,7 +86,7 @@ export interface SidecarEvent {
 }
 
 export interface LocalAsrEvent {
-  type: "ready" | "availability" | "released" | "status" | "partial" | "final" | "stopped" | "error";
+  type: "ready" | "languages" | "availability" | "released" | "status" | "partial" | "final" | "stopped" | "error";
   detail?: string;
   text?: string;
   start_ms?: number;
@@ -96,14 +96,16 @@ export interface LocalAsrEvent {
   supported?: boolean;
   deletable?: boolean;
   released?: boolean;
+  languages?: string[];
 }
 
 export interface LocalTranslationEvent {
-  type: "ready" | "availability" | "status" | "translation" | "error";
+  type: "ready" | "languages" | "availability" | "status" | "translation" | "error";
   detail?: string;
   request_id?: number;
   translation?: string;
   message?: string;
   installed?: boolean;
   supported?: boolean;
+  languages?: string[];
 }

@@ -78,7 +78,11 @@
           <form id="modelSettingsForm">
             <h2>Transcription</h2>
             <p class="section-description">Choose the spoken language and manage its offline transcription model.</p>
-            <div id="transcriptionModels" class="settings-group model-list" role="radiogroup" aria-label="Transcription language models"></div>
+            <div class="language-list-shell settings-group">
+              <input id="transcriptionSearch" class="language-search model-search" type="search" placeholder="Search transcription languages" aria-label="Search transcription languages" />
+              <div id="transcriptionModels" class="model-list" role="radiogroup" aria-label="Transcription language models"></div>
+              <p id="transcriptionEmpty" class="language-empty hidden" role="status">No transcription languages match your search.</p>
+            </div>
 
             <h2>Translation</h2>
             <div class="settings-group">
@@ -95,7 +99,11 @@
 
             </div>
             <p class="section-description translation-description">Choose the caption translation language. Availability is shown for the selected spoken language.</p>
-            <div id="translationModels" class="settings-group model-list" role="radiogroup" aria-label="Translation language models"></div>
+            <div class="language-list-shell settings-group">
+              <input id="translationSearch" class="language-search model-search" type="search" placeholder="Search translation languages" aria-label="Search translation languages" />
+              <div id="translationModels" class="model-list" role="radiogroup" aria-label="Translation language models"></div>
+              <p id="translationEmpty" class="language-empty hidden" role="status">No translation languages match your search.</p>
+            </div>
             <p class="provider-note">Transcription and translation stay on this Mac. Apple transcription requires macOS 26; translation requires macOS 15.</p>
           </form>
         </section>

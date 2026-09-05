@@ -94,6 +94,8 @@ h1 {
 }
 
 .field select { width: 240px; height: calc(var(--control-height) + 4px); }
+.onboarding-shell .language-picker-popover { width: min(320px, calc(100vw - 72px)); }
+.onboarding-shell .language-options { max-height: 166px; }
 
 .model-card {
   padding: var(--space-7);

@@ -30,6 +30,8 @@ interface CaptionsBridge {
   getUpdaterState(): Promise<UpdaterState>; installUpdate(value: boolean): Promise<void>;
   remindUpdateLater(value: boolean): Promise<void>; skipUpdate(value: boolean): Promise<void>;
   getOnboardingState(): Promise<{ settings: CaptureSettings }>;
+  getTranscriptionLanguages(): Promise<string[]>;
+  getTranslationLanguages(sourceLanguage?: string): Promise<string[]>;
   getTranscriptionModelAvailability(language: string): Promise<ModelAvailability>;
   getTranslationModelAvailability(source: string, target: string): Promise<ModelAvailability>;
   prepareTranscriptionModel(language: string): Promise<void>; deleteTranscriptionModel(language: string): Promise<void>;

@@ -20,11 +20,17 @@ const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_CHECK_DELAY_MS = 10_000;
 const PREVIEW_VERSION = "2.13.0";
 const PREVIEW_RELEASE_NOTES = [
-  "- Added automatic update checks",
-  "- Added release notes and download progress",
-  "- Added Skip This Version and Remind Me Later",
-  "- Improved update error handling",
-  "- Minor bug fixes and improvements"
+  "<h2>What’s Changed</h2>",
+  "<h3>New features</h3>",
+  "<ul>",
+  "<li>Added automatic update checks</li>",
+  "<li>Added release notes and download progress</li>",
+  "<li>Added Skip This Version and Remind Me Later</li>",
+  "<li>Improved update error handling</li>",
+  "<li>Improved the updater layout for long release notes</li>",
+  "<li>Minor bug fixes and improvements</li>",
+  "</ul>",
+  "<p>Thanks to <a href=\"https://github.com/terrencewtk\">@terrencewtk</a>.</p>"
 ].join("\n");
 
 function errorMessage(error: unknown): string {

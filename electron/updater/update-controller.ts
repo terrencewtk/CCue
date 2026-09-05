@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from "electron";
 import { autoUpdater, type ProgressInfo, type UpdateInfo } from "electron-updater";
 import { preloadScriptPath, rendererFilePath } from "../shared/runtime-paths";
 import { readUpdatePreferences, writeUpdatePreferences } from "./update-preferences";
@@ -20,11 +20,17 @@ const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_CHECK_DELAY_MS = 10_000;
 const PREVIEW_VERSION = "2.13.0";
 const PREVIEW_RELEASE_NOTES = [
-  "- Added automatic update checks",
-  "- Added release notes and download progress",
-  "- Added Skip This Version and Remind Me Later",
-  "- Improved update error handling",
-  "- Minor bug fixes and improvements"
+  "<h2>What’s Changed</h2>",
+  "<h3>New features</h3>",
+  "<ul>",
+  "<li>Added automatic update checks</li>",
+  "<li>Added release notes and download progress</li>",
+  "<li>Added Skip This Version and Remind Me Later</li>",
+  "<li>Improved update error handling</li>",
+  "<li>Improved the updater layout for long release notes</li>",
+  "<li>Minor bug fixes and improvements</li>",
+  "</ul>",
+  "<p>Thanks to <a href=\"https://github.com/terrencewtk\">@terrencewtk</a>.</p>"
 ].join("\n");
 
 function errorMessage(error: unknown): string {
@@ -218,7 +224,19 @@ export class UpdateController {
       }
     });
     this.updateWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-    this.updateWindow.webContents.on("will-navigate", (event) => event.preventDefault());
+    this.updateWindow.webContents.on("will-navigate", (event, destination) => {
+      event.preventDefault();
+      try {
+        const url = new URL(destination);
+        if (url.protocol === "http:" || url.protocol === "https:") {
+          void shell.openExternal(url.href).catch((error) => {
+            console.error("[updater] Unable to open external link:", errorMessage(error));
+          });
+        }
+      } catch {
+        // Ignore malformed destinations and keep the updater on its local page.
+      }
+    });
     void this.updateWindow.loadFile(rendererFilePath(__dirname, "updater.html")).then(() => {
       this.updateWindow?.show();
       this.sendState();

@@ -82,7 +82,10 @@
               <div id="transcriptionModels" class="model-list" aria-label="Enabled transcription languages"></div>
               <p id="transcriptionEmpty" class="language-empty hidden" role="status">No transcription languages are enabled.</p>
             </div>
-            <button id="addTranscription" type="button">Add Language…</button>
+            <button id="addTranscription" class="add-language-button" type="button">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+              <span>Add Language</span>
+            </button>
 
             <h2>Translation</h2>
             <p class="section-description translation-description">Targets are enabled globally. Readiness is shown for the current persisted spoken language.</p>
@@ -90,7 +93,10 @@
               <div id="translationModels" class="model-list" aria-label="Enabled translation languages"></div>
               <p id="translationEmpty" class="language-empty hidden" role="status">No translation targets are enabled.</p>
             </div>
-            <button id="addTranslation" type="button">Add Language…</button>
+            <button id="addTranslation" class="add-language-button" type="button">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+              <span>Add Language</span>
+            </button>
             <p class="provider-note">Transcription and translation stay on this Mac. Apple transcription requires macOS 26; translation requires macOS 15.</p>
           </div>
         </section>

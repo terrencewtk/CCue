@@ -52,11 +52,24 @@ function stopShortcutRecording(): void {
   renderShortcut();
 }
 
-function actionButton(label: string, handler: () => void, className = "model-action-button"): HTMLButtonElement {
+const actionIcons = {
+  download: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7M5 7l3 3 3-3M3 13h10" /></svg>',
+  delete: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6 2.5h4M5 4.5l.5 9h5l.5-9M7 7v4M9 7v4" /></svg>',
+  disable: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M5.5 8h5" /></svg>'
+} as const;
+
+function actionButton(
+  label: string,
+  icon: keyof typeof actionIcons,
+  handler: () => void,
+  variant = ""
+): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = className;
-  button.textContent = label;
+  button.className = `model-icon-button ${variant}`.trim();
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.innerHTML = actionIcons[icon];
   button.addEventListener("click", handler);
   return button;
 }
@@ -81,20 +94,20 @@ function rowFor(model: ModelView, kind: ModelKind): HTMLElement {
   trailing.append(status);
   if (model.availability?.supported) {
     if (!model.availability.installed) {
-      trailing.append(actionButton("Download", () => void mutate(
+      trailing.append(actionButton(`Download ${model.name} model`, "download", () => void mutate(
         kind === "transcription"
           ? { type: "prepare-transcription", language: model.value }
           : { type: "prepare-translation", language: model.value }
-      )));
+      ), "download"));
     } else if (kind === "transcription" && model.availability.deletable) {
-      trailing.append(actionButton("Delete model", () => {
+      trailing.append(actionButton(`Delete ${model.name} model`, "delete", () => {
         if (window.confirm(`Delete the ${model.name} transcription model? The language stays enabled.`)) {
           void mutate({ type: "delete-transcription", language: model.value });
         }
-      }, "model-action-button delete"));
+      }, "danger"));
     }
   }
-  trailing.append(actionButton("Disable", () => void mutate({ type: "disable", kind, language: model.value }), "model-disable"));
+  trailing.append(actionButton(`Disable ${model.name}`, "disable", () => void mutate({ type: "disable", kind, language: model.value }), "danger"));
   row.append(copy, trailing);
   return row;
 }

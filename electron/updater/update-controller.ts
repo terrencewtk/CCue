@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell, type WebContents } from "electron";
 import { autoUpdater, type ProgressInfo, type UpdateInfo } from "electron-updater";
 import { preloadScriptPath, rendererFilePath } from "../shared/runtime-paths";
 import { readUpdatePreferences, writeUpdatePreferences } from "./update-preferences";
@@ -218,7 +218,19 @@ export class UpdateController {
       }
     });
     this.updateWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
-    this.updateWindow.webContents.on("will-navigate", (event) => event.preventDefault());
+    this.updateWindow.webContents.on("will-navigate", (event, destination) => {
+      event.preventDefault();
+      try {
+        const url = new URL(destination);
+        if (url.protocol === "http:" || url.protocol === "https:") {
+          void shell.openExternal(url.href).catch((error) => {
+            console.error("[updater] Unable to open external link:", errorMessage(error));
+          });
+        }
+      } catch {
+        // Ignore malformed destinations and keep the updater on its local page.
+      }
+    });
     void this.updateWindow.loadFile(rendererFilePath(__dirname, "updater.html")).then(() => {
       this.updateWindow?.show();
       this.sendState();

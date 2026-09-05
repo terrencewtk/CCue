@@ -1,9 +1,13 @@
-# CCue
+<h1 align="center"><img src="docs/ccue-icon.png" alt="CCue app icon" width="80"><br>CCue</h1>
 
-[![CI](https://github.com/terrencewtk/ccue/actions/workflows/ci.yml/badge.svg)](https://github.com/terrencewtk/ccue/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/terrencewtk/ccue)](https://github.com/terrencewtk/ccue/releases/latest)
-[![License: GPL-3.0](https://img.shields.io/github/license/terrencewtk/ccue)](LICENSE)
-![Platform](https://img.shields.io/badge/macOS-26%2B-000000?logo=apple)
+<p align="center">
+  <a href="https://github.com/terrencewtk/ccue/actions/workflows/ci.yml"><img src="https://github.com/terrencewtk/ccue/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/terrencewtk/ccue/releases/latest"><img src="https://img.shields.io/github/v/release/terrencewtk/ccue" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/terrencewtk/ccue" alt="License: GPL-3.0"></a>
+  <img src="https://img.shields.io/badge/macOS-26%2B-000000?logo=apple" alt="Platform">
+</p>
+
+<br>
 
 Private, real-time captions for your Mac's system audio.
 

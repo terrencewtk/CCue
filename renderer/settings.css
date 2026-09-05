@@ -133,6 +133,11 @@ nav { display: grid; gap: 3px; }
 
 .language-list-shell { overflow: hidden; }
 .model-search { width: calc(100% - 24px); margin: 12px; }
+.language-refresh-status {
+  margin: 0 var(--space-6) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+}
 .model-list { max-height: 330px; overflow-y: auto; overscroll-behavior: contain; transition: opacity var(--transition-fast); }
 .model-list.disabled { opacity: .48; }
 .language-empty { margin: 0; padding: 28px 18px; color: var(--color-text-muted); text-align: center; }

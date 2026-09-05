@@ -9,6 +9,8 @@ import {
   sameTranslationLanguage,
   type LanguageModel
 } from "./language-catalog.js";
+import { createRefreshTracker } from "./refresh-tracker.js";
+import { prepareTranslationRefresh } from "./translation-refresh.js";
 import { DEFAULT_SHORTCUT, acceleratorFromEvent, display } from "./shortcut.js";
 
 const translationEnabled = document.querySelector<HTMLInputElement>("#translationEnabled")!;
@@ -19,6 +21,7 @@ const transcriptionSearch = document.querySelector<HTMLInputElement>("#transcrip
 const translationSearch = document.querySelector<HTMLInputElement>("#translationSearch")!;
 const transcriptionEmpty = document.querySelector<HTMLElement>("#transcriptionEmpty")!;
 const translationEmpty = document.querySelector<HTMLElement>("#translationEmpty")!;
+const translationRefreshStatus = document.querySelector<HTMLElement>("#translationRefreshStatus")!;
 const notice = document.querySelector<HTMLElement>("#notice")!;
 const shortcutRecorder = document.querySelector<HTMLButtonElement>("#shortcutRecorder")!;
 const shortcutRemove = document.querySelector<HTMLButtonElement>("#shortcutRemove")!;
@@ -35,7 +38,8 @@ type ModelKind = "transcription" | "translation";
 type ModelState = "checking" | "ready" | "missing" | "downloading" | "unavailable" | "check-error" | "error" | "deleting" | "delete-error";
 type IconName = "checking" | "ready" | "missing" | "error" | "download" | "retry" | "trash";
 let activeDownload: { kind: ModelKind; value: string } | null = null;
-let refreshGeneration = 0;
+let translationRefreshing = false;
+const refreshTracker = createRefreshTracker();
 let selectedShortcut: string | null = DEFAULT_SHORTCUT;
 let recordingShortcut = false;
 const runModelOperation = modelChecker.run;
@@ -183,7 +187,7 @@ function setModelState(kind: ModelKind, value: string, state: ModelState, detail
   action.setAttribute("aria-label", canDelete
     ? `Delete ${model.name} model`
     : retryingCheck ? `Check ${model.name} availability again` : `Download ${model.name} model`);
-  action.disabled = Boolean(activeDownload);
+  action.disabled = Boolean(activeDownload) || (kind === "translation" && translationRefreshing);
   progress.classList.toggle("hidden", state !== "downloading");
   progressFill.style.width = `${typeof percent === "number" ? percent : 12}%`;
 
@@ -258,11 +262,14 @@ function stopShortcutRecording(): void {
 }
 
 function updateTranslationControls(): void {
-  translationModels.classList.toggle("disabled", !translationEnabled.checked);
+  const locked = translationRefreshing;
+  translationModels.classList.toggle("disabled", !translationEnabled.checked || locked);
+  translationModels.setAttribute("aria-busy", String(locked));
+  translationSearch.disabled = locked || !translationEnabled.checked;
   translationModels.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((control) => {
     const target = control.closest<HTMLElement>(".model-row")?.dataset.language ?? "";
     const sameAsSource = target ? sameTranslationLanguage(target, selectedLanguage) : false;
-    control.disabled = !translationEnabled.checked || sameAsSource || Boolean(activeDownload);
+    control.disabled = locked || !translationEnabled.checked || sameAsSource || Boolean(activeDownload);
   });
   const sameLanguageRow = translationLanguages
     .find((model) => sameTranslationLanguage(model.value, selectedLanguage))
@@ -282,6 +289,13 @@ function updateTranslationControls(): void {
   }
 }
 
+function setTranslationRefreshPending(refreshing: boolean): void {
+  translationRefreshing = refreshing;
+  translationRefreshStatus.textContent = refreshing ? "Checking availability…" : "";
+  translationRefreshStatus.classList.toggle("hidden", !refreshing);
+  updateTranslationControls();
+}
+
 async function selectModel(kind: ModelKind, value: string): Promise<void> {
   if (kind === "transcription") {
     selectedLanguage = value;
@@ -291,8 +305,7 @@ async function selectModel(kind: ModelKind, value: string): Promise<void> {
       if (nextTarget) nextTarget.checked = true;
     }
     updateTranslationControls();
-    await refreshTranslationModels();
-    await persistSettings();
+    await refreshTranslationModels(undefined, true);
   } else {
     selectedTranslationLanguage = value;
     await persistSettings();
@@ -300,52 +313,83 @@ async function selectModel(kind: ModelKind, value: string): Promise<void> {
 }
 
 async function refreshModels(): Promise<void> {
-  const generation = ++refreshGeneration;
+  const generation = refreshTracker.next();
   for (const model of transcriptionLanguages) {
     setModelState("transcription", model.value, "checking");
     try {
       const result = await runModelOperation(() => (
         window.captions.getTranscriptionModelAvailability(model.value)
       ));
-      if (generation !== refreshGeneration) return;
+      if (!refreshTracker.isCurrent(generation)) return;
       applyAvailability("transcription", model.value, result);
     } catch (error) {
-      if (generation !== refreshGeneration) return;
+      if (!refreshTracker.isCurrent(generation)) return;
       setModelState("transcription", model.value, "check-error", error instanceof Error ? error.message : String(error));
     }
   }
   await refreshTranslationModels(generation);
 }
 
-async function refreshTranslationModels(existingGeneration?: number): Promise<void> {
-  const generation = existingGeneration ?? ++refreshGeneration;
+async function refreshTranslationModels(existingGeneration?: number, persistSelection = false): Promise<void> {
+  const generation = existingGeneration ?? refreshTracker.next();
+  setTranslationRefreshPending(true);
   let identifiers: string[];
   try {
-    identifiers = await runModelOperation(() => window.captions.getTranslationLanguages(selectedLanguage));
-  } catch (error) {
-    showError(error);
-    identifiers = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, selectedLanguage));
-  }
-  if (generation !== refreshGeneration) return;
-  translationLanguages = languageModels(identifiers);
-  selectedTranslationLanguage = resolveTranslationLanguageSelection(selectedTranslationLanguage, selectedLanguage, identifiers, "en-US");
-  translationModels.replaceChildren(...translationLanguages.map((model) => modelRow(model, "translation")));
-  applyModelFilter("translation");
-  for (const model of translationLanguages) {
-    setModelState("translation", model.value, "checking");
     try {
-      const sourceLanguage = selectedLanguage;
-      const result = await runModelOperation(() => (
-        window.captions.getTranslationModelAvailability(sourceLanguage, model.value)
-      ));
-      if (generation !== refreshGeneration) return;
-      applyAvailability("translation", model.value, result);
+      const plan = await prepareTranslationRefresh(
+        selectedLanguage,
+        selectedTranslationLanguage,
+        (sourceLanguage) => runModelOperation(() => window.captions.getTranslationLanguages(sourceLanguage)),
+        async (resolvedTranslationLanguage) => {
+          if (!persistSelection) return;
+          await persistSettings({
+            ...settings(),
+            language: selectedLanguage,
+            translationLanguage: resolvedTranslationLanguage
+          });
+        },
+        () => refreshTracker.isCurrent(generation)
+      );
+      if (!plan) return;
+      identifiers = plan.identifiers;
+      selectedTranslationLanguage = plan.selectedTranslationLanguage;
     } catch (error) {
-      if (generation !== refreshGeneration) return;
-      setModelState("translation", model.value, "check-error", error instanceof Error ? error.message : String(error));
+      if (!refreshTracker.isCurrent(generation)) return;
+      showError(error);
+      identifiers = LEGACY_TRANSLATION_LANGUAGES.filter((target) => !sameTranslationLanguage(target, selectedLanguage));
+      selectedTranslationLanguage = resolveTranslationLanguageSelection(selectedTranslationLanguage, selectedLanguage, identifiers, "en-US");
+      if (persistSelection) {
+        await persistSettings({
+          ...settings(),
+          language: selectedLanguage,
+          translationLanguage: selectedTranslationLanguage
+        });
+      }
     }
+    if (!refreshTracker.isCurrent(generation)) return;
+    translationLanguages = languageModels(identifiers);
+    if (!refreshTracker.isCurrent(generation)) return;
+    translationRefreshStatus.textContent = "Checking availability…";
+    translationModels.replaceChildren(...translationLanguages.map((model) => modelRow(model, "translation")));
+    applyModelFilter("translation");
+    for (const model of translationLanguages) {
+      setModelState("translation", model.value, "checking");
+      try {
+        const sourceLanguage = selectedLanguage;
+        const result = await runModelOperation(() => (
+          window.captions.getTranslationModelAvailability(sourceLanguage, model.value)
+        ));
+        if (!refreshTracker.isCurrent(generation)) return;
+        applyAvailability("translation", model.value, result);
+      } catch (error) {
+        if (!refreshTracker.isCurrent(generation)) return;
+        setModelState("translation", model.value, "check-error", error instanceof Error ? error.message : String(error));
+      }
+    }
+    updateTranslationControls();
+  } finally {
+    if (refreshTracker.isCurrent(generation)) setTranslationRefreshPending(false);
   }
-  updateTranslationControls();
 }
 
 async function retryModelCheck(kind: ModelKind, value: string): Promise<void> {
@@ -419,9 +463,9 @@ function handleModelStatus(status: ModelPreparationStatus): void {
   else setModelState(activeDownload.kind, activeDownload.value, "downloading", status.detail, status.percent);
 }
 
-async function persistSettings(): Promise<boolean> {
+async function persistSettings(nextSettings = settings()): Promise<boolean> {
   try {
-    await window.captions.saveSettings(settings());
+    await window.captions.saveSettings(nextSettings);
     clearError();
     return true;
   } catch (error) {
@@ -461,7 +505,7 @@ if (!window.captions) {
     return refreshModels();
   }).catch(showError);
 
-  overlayLineCount.addEventListener("change", persistSettings);
+  overlayLineCount.addEventListener("change", () => { void persistSettings(); });
   translationEnabled.addEventListener("change", () => {
     updateTranslationControls();
     persistSettings();

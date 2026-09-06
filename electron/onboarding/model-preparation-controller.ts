@@ -16,7 +16,6 @@ function progressFrom(detail: string): number | undefined {
 }
 
 export class ModelPreparationController {
-  private active?: "transcription" | "translation";
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly transcription: LocalAsrStream;
   private readonly translation: LocalTranslationService;
@@ -35,20 +34,28 @@ export class ModelPreparationController {
   }
 
   async transcriptionAvailability(language: string): Promise<{ installed: boolean; supported: boolean; deletable: boolean }> {
-    return this.enqueue("transcription", () => this.transcription.checkAvailability(language));
+    return this.enqueue(() => this.transcription.checkAvailability(language));
+  }
+
+  async transcriptionLanguages(): Promise<string[]> {
+    return this.enqueue(() => this.transcription.supportedLanguages());
+  }
+
+  async translationLanguages(sourceLanguage?: string): Promise<string[]> {
+    return this.enqueue(() => this.translation.supportedLanguages(sourceLanguage));
   }
 
   async translationAvailability(
     sourceLanguage: string,
     targetLanguage: string
   ): Promise<{ installed: boolean; supported: boolean; deletable: boolean }> {
-    return this.enqueue("translation", () => (
+    return this.enqueue(() => (
       this.translation.checkAvailability(sourceLanguage, targetLanguage)
     ));
   }
 
   async prepareTranscription(language: string): Promise<{ ok: true }> {
-    return this.enqueue("transcription", async () => {
+    return this.enqueue(async () => {
       this.send("transcription", "preparing", "Checking the on-device transcription model…", 0);
       try {
         await this.transcription.open(language);
@@ -65,7 +72,7 @@ export class ModelPreparationController {
   }
 
   async releaseTranscription(language: string): Promise<{ ok: true }> {
-    return this.enqueue("transcription", async () => {
+    return this.enqueue(async () => {
       const released = await this.transcription.release(language);
       if (!released) throw new Error("This model can’t be deleted right now");
       return { ok: true };
@@ -73,7 +80,7 @@ export class ModelPreparationController {
   }
 
   async prepareTranslation(sourceLanguage: string, targetLanguage: string): Promise<{ ok: true }> {
-    return this.enqueue("translation", async () => {
+    return this.enqueue(async () => {
       this.send("translation", "preparing", "Checking the required Apple Translation languages…");
       try {
         await this.translation.open(sourceLanguage, targetLanguage);
@@ -92,22 +99,10 @@ export class ModelPreparationController {
   close(): void {
     this.transcription.close();
     this.translation.close();
-    this.active = undefined;
   }
 
-  private begin(model: "transcription" | "translation"): void {
-    this.active = model;
-  }
-
-  private enqueue<T>(model: "transcription" | "translation", operation: () => Promise<T>): Promise<T> {
-    const result = this.operationQueue.then(async () => {
-      this.begin(model);
-      try {
-        return await operation();
-      } finally {
-        this.active = undefined;
-      }
-    });
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operationQueue.then(operation);
     this.operationQueue = result.then(() => {}, () => {});
     return result;
   }

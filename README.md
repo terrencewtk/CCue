@@ -27,12 +27,12 @@ CCue is a free and open-source macOS app that turns the audio playing on your Ma
 
 ## Language support
 
-| Feature | Languages |
-| --- | --- |
-| Transcription | English (US), Japanese, Korean, Chinese (Mandarin) |
-| Translation | English (US), Japanese, Korean, Chinese (Simplified), Chinese (Traditional) |
+CCue can add any language reported by Apple on the current Mac. Normal caption menus stay fast and predictable by showing only your small, persisted language library; Apple’s complete runtime catalog is fetched only during onboarding or when you add a language or translation pair in Settings.
 
-Actual model availability depends on the language pair and the models supported by macOS on your Mac.
+- Transcription languages come from [`SpeechTranscriber.supportedLocales`](https://developer.apple.com/documentation/speech/speechtranscriber/supportedlocales). These are the on-device models that are installed or downloadable for the current device.
+- Translation languages come from [`LanguageAvailability.supportedLanguages`](https://developer.apple.com/documentation/translation/languageavailability/supportedlanguages). CCue also checks [`status(from:to:)`](https://developer.apple.com/documentation/translation/languageavailability/status(from:to:)) so it only offers target languages Apple reports as valid for the selected spoken language.
+
+Apple can add languages through OS updates, and availability can vary by macOS version, hardware, installed assets, and source/target pair. The onboarding and Settings selectors are searchable and scrollable. Transcription languages and exact translation pairs are enabled separately; enabling either does not download its model. Readiness remains runtime-only and is checked only for the relevant language or pair. See [Language support](docs/language-support.md) for implementation details.
 
 ## Requirements
 
@@ -76,13 +76,13 @@ npm run start:electron
 
 ## Using CCue
 
-1. Complete the first-run setup and choose a spoken language.
+1. Complete the first-run setup and search for a spoken language.
 2. Download the Apple transcription model when prompted.
 3. Optionally choose a translation language and download the required models.
 4. Play audio on your Mac and select **Start captions**.
 5. Select **Stop captions**, or use the global shortcut, to end the session. The default is <kbd>Command</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd>.
 
-Open **CCue → Settings…** or press <kbd>Command</kbd> + <kbd>,</kbd> to manage models, translation, the keyboard shortcut, and the number of visible caption rows. macOS may request permission to capture system audio.
+Open **CCue → Settings…** or press <kbd>Command</kbd> + <kbd>,</kbd> to add or disable transcription languages and translation pairs, manage their models, change the keyboard shortcut, and set the number of visible caption rows. The active source, target, and translation toggle remain session controls in the main window. macOS may request permission to capture system audio.
 
 ## Privacy and security
 
@@ -159,9 +159,11 @@ Caption and translation diagnostics can contain private text, so they must be en
 ```bash
 CCUE_DEBUG_TRANSLATIONS=1 npm start
 CCUE_ENABLE_ADAPTIVE_HINTS=1 npm start
+CCUE_LANGUAGE_PREVIEW=1 npm run start:electron
 ```
 
 Translation traces are written to the ignored `debug-output/` directory. Review them before sharing.
+`CCUE_LANGUAGE_PREVIEW` supplies sample languages and model states for UI review only; it never changes production discovery.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 

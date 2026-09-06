@@ -29,6 +29,7 @@ private struct Event: Encodable {
     var supported: Bool? = nil
     var deletable: Bool? = nil
     var released: Bool? = nil
+    var languages: [String]? = nil
 }
 
 private final class EventWriter: @unchecked Sendable {
@@ -240,6 +241,8 @@ private actor LocalAsrSession {
 
     func handle(_ command: Command) async throws -> Bool {
         switch command.command {
+        case "languages":
+            try await reportLanguages()
         case "availability":
             try await reportAvailability(language: command.language)
         case "release":
@@ -262,6 +265,23 @@ private actor LocalAsrSession {
             throw LocalAsrError.invalidCommand
         }
         return true
+    }
+
+    private func reportLanguages() async throws {
+        #if compiler(>=6.2) && canImport(Speech)
+        guard #available(macOS 26.0, *) else {
+            throw LocalAsrError.unsupported("Offline transcription requires macOS 26 or later")
+        }
+        guard SpeechTranscriber.isAvailable else {
+            throw LocalAsrError.unsupported("Offline transcription is not available on this Mac")
+        }
+        let identifiers = await SpeechTranscriber.supportedLocales.map {
+            $0.identifier(.bcp47)
+        }
+        writer.send(Event(type: "languages", languages: identifiers))
+        #else
+        throw LocalAsrError.unsupported("Offline transcription is unavailable in this build")
+        #endif
     }
 
     private func reportAvailability(language: String?) async throws {

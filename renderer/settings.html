@@ -72,32 +72,33 @@
         <section id="modelPanel" class="settings-panel" data-panel-content="model" aria-labelledby="modelHeading">
           <header class="panel-header">
             <h1 id="modelHeading">Model</h1>
-            <p>Choose and manage the on-device models used for captions and translations.</p>
+            <p>Manage the small language library shown in CCue’s normal menus.</p>
           </header>
 
-          <form id="modelSettingsForm">
+          <div>
             <h2>Transcription</h2>
-            <p class="section-description">Choose the spoken language and manage its offline transcription model.</p>
-            <div id="transcriptionModels" class="settings-group model-list" role="radiogroup" aria-label="Transcription language models"></div>
+            <p class="section-description">Enabled languages appear immediately in the control window.</p>
+            <div class="language-list-shell settings-group">
+              <div id="transcriptionModels" class="model-list" aria-label="Enabled transcription languages"></div>
+              <p id="transcriptionEmpty" class="language-empty hidden" role="status">No transcription languages are enabled.</p>
+            </div>
+            <button id="addTranscription" class="add-language-button" type="button">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+              <span>Add Language</span>
+            </button>
 
             <h2>Translation</h2>
-            <div class="settings-group">
-              <label class="setting-row" for="translationEnabled">
-                <span class="setting-copy">
-                  <strong>Translate captions</strong>
-                  <small>Translate locally with Apple's on-device language model.</small>
-                </span>
-                <span class="switch">
-                  <input id="translationEnabled" name="translationEnabled" type="checkbox" checked />
-                  <span class="switch-track"></span>
-                </span>
-              </label>
-
+            <p class="section-description translation-description">Enable the exact spoken and translated language pairs you use.</p>
+            <div class="language-list-shell settings-group">
+              <div id="translationModels" class="model-list" aria-label="Enabled translation pairs"></div>
+              <p id="translationEmpty" class="language-empty hidden" role="status">No translation pairs are enabled.</p>
             </div>
-            <p class="section-description translation-description">Choose the caption translation language. Availability is shown for the selected spoken language.</p>
-            <div id="translationModels" class="settings-group model-list" role="radiogroup" aria-label="Translation language models"></div>
+            <button id="addTranslation" class="add-language-button" type="button">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+              <span>Add Pair</span>
+            </button>
             <p class="provider-note">Transcription and translation stay on this Mac. Apple transcription requires macOS 26; translation requires macOS 15.</p>
-          </form>
+          </div>
         </section>
 
         <section id="aboutPanel" class="settings-panel" data-panel-content="about" aria-labelledby="aboutHeading">
@@ -115,6 +116,20 @@
         </section>
       </div>
     </main>
+    <dialog id="addLanguageDialog" class="language-dialog">
+      <header>
+        <h2 id="addLanguageTitle">Add language</h2>
+        <button id="addLanguageClose" type="button" aria-label="Close">×</button>
+      </header>
+      <label id="addLanguageSourceField" class="dialog-source hidden" for="addLanguageSource">
+        <span>Spoken language</span>
+        <select id="addLanguageSource" aria-label="Spoken language for translation pair"></select>
+      </label>
+      <input id="addLanguageSearch" class="language-search" type="search" placeholder="Search languages" aria-label="Search Apple language catalog" />
+      <div id="addLanguageResults" class="catalog-results"></div>
+      <p id="addLanguageState" role="status"></p>
+      <button id="addLanguageRetry" class="hidden" type="button">Retry</button>
+    </dialog>
     <script type="module" src="../build/renderer/settings.js"></script>
   </body>
 </html>

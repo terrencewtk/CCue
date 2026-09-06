@@ -107,7 +107,12 @@ function rowFor(model: ModelView, kind: ModelKind): HTMLElement {
       }, "danger"));
     }
   }
-  trailing.append(actionButton(`Disable ${model.name}`, "disable", () => void mutate({ type: "disable", kind, language: model.value }), "danger"));
+  trailing.append(actionButton(
+    `Remove ${model.name} from enabled languages`,
+    "disable",
+    () => void mutate({ type: "disable", kind, language: model.value }),
+    "ghost"
+  ));
   row.append(copy, trailing);
   return row;
 }

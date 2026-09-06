@@ -196,6 +196,18 @@ nav { display: grid; gap: 3px; }
 .model-icon-button.download:hover { border-color: #b9cafa; background: var(--color-accent-soft); color: var(--color-accent-hover); }
 .model-icon-button.danger { color: var(--color-danger); }
 .model-icon-button.danger:hover { border-color: #dec0bc; background: #fff2f0; color: var(--color-danger-hover); }
+.model-icon-button.ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-subtle);
+}
+.model-icon-button.ghost:hover {
+  border-color: transparent;
+  background: rgba(182, 70, 57, .07);
+  color: var(--color-danger);
+}
+.model-icon-button.ghost:focus-visible { color: var(--color-danger); }
 .model-icon-button:focus-visible,
 .add-language-button:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--color-focus-ring); }
 .add-language-button {

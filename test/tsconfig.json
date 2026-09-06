@@ -7,5 +7,5 @@
     "rootDir": "..",
     "outDir": "../build/test-suite"
   },
-  "include": ["../electron/**/*.ts", "./**/*.ts"]
+  "include": ["../electron/**/*.ts", "../renderer/globals.d.ts", "./**/*.ts"]
 }

@@ -23,6 +23,7 @@ private struct Event: Encodable {
     var message: String? = nil
     var installed: Bool? = nil
     var supported: Bool? = nil
+    var languages: [String]? = nil
 }
 
 private final class EventWriter: @unchecked Sendable {
@@ -120,6 +121,8 @@ private final class TranslationHostModel: ObservableObject {
 
     func handle(_ command: Command) async -> Bool {
         switch command.command {
+        case "languages":
+            await reportLanguages(source: command.source_language)
         case "availability":
             await reportAvailability(source: command.source_language, target: command.target_language)
         case "start":
@@ -133,6 +136,22 @@ private final class TranslationHostModel: ObservableObject {
             writer.send(Event(type: "error", request_id: command.request_id, message: LocalTranslationError.invalidCommand.localizedDescription))
         }
         return true
+    }
+
+    private func reportLanguages(source: String?) async {
+        let availability = LanguageAvailability()
+        let languages = await availability.supportedLanguages
+        guard let source else {
+            writer.send(Event(type: "languages", languages: languages.map(\.minimalIdentifier)))
+            return
+        }
+        let sourceLanguage = Locale.Language(identifier: translationLocaleIdentifier(for: source))
+        var supported: [String] = []
+        for language in languages where !sameLanguage(source, language.minimalIdentifier) {
+            let status = await availability.status(from: sourceLanguage, to: language)
+            if status != .unsupported { supported.append(language.minimalIdentifier) }
+        }
+        writer.send(Event(type: "languages", languages: supported))
     }
 
     private func reportAvailability(source: String?, target: String?) async {

@@ -1,6 +1,6 @@
 import { commitQuality, renderTimeline, replaceDraft, setQualityTranslation } from "./caption-timeline";
 import type { CaptionRecord, CaptionUtterance } from "../shared/types";
-import { WindowManager } from "../ui/window-manager";
+import type { WindowManager } from "../ui/window-manager";
 
 export class CaptionService {
   private records: CaptionRecord[] = [];

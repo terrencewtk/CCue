@@ -5,7 +5,7 @@ import { LocalAsrStream } from "../local-asr/local-asr-stream";
 import { LocalTranslationService } from "../local-translation/local-translation-service";
 import { normalizeCaptureSettings } from "../settings/settings-store";
 import type { AudioChunk, CaptureSettings, CaptureSettingsInput, SidecarEvent } from "../shared/types";
-import { WindowManager } from "../ui/window-manager";
+import type { WindowManager } from "../ui/window-manager";
 
 export class CaptureController {
   private readonly captions: CaptionService;
@@ -13,15 +13,18 @@ export class CaptureController {
   private readonly localTranslation: LocalTranslationService;
   private readonly sidecar: NativeSidecar;
   private capturing = false;
+  private starting?: Promise<{ ok: true }>;
   private sessionId = 0;
   private audioClockMs = 0;
-  private settings: CaptureSettings = normalizeCaptureSettings({});
   private partialTranslationTimer?: NodeJS.Timeout;
   private partialTranslationGeneration = 0;
   private readonly segmentTranslationCache = new Map<string, Promise<string>>();
   private translationReady = false;
 
-  constructor(private readonly windows: WindowManager) {
+  constructor(
+    private readonly windows: WindowManager,
+    private readonly validateSettings?: (settings: CaptureSettings) => Promise<void>
+  ) {
     this.captions = new CaptionService(windows);
     this.localTranscription = new LocalAsrStream({
       onStatus: (detail) => this.windows.sendStatus({ state: "connecting", detail }),
@@ -44,11 +47,20 @@ export class CaptureController {
   ensureSidecar(): void { this.sidecar.ensureRunning(); }
   clearCaptions(): void { this.captions.clear(); }
 
-  async start(settingsInput: CaptureSettingsInput): Promise<{ ok: true }> {
-    if (this.capturing) return { ok: true };
-    const settings = normalizeCaptureSettings(settingsInput);
+  start(settingsInput: CaptureSettingsInput): Promise<{ ok: true }> {
+    if (this.starting) return this.starting;
+    if (this.capturing) return Promise.resolve({ ok: true });
 
-    this.settings = settings;
+    this.starting = this.startCapture(settingsInput).finally(() => {
+      this.starting = undefined;
+    });
+    return this.starting;
+  }
+
+  private async startCapture(settingsInput: CaptureSettingsInput): Promise<{ ok: true }> {
+    const settings = normalizeCaptureSettings(settingsInput);
+    await this.validateSettings?.(settings);
+
     this.sessionId += 1;
     this.captions.beginSession(settings.overlayLineCount);
     this.audioClockMs = 0;
@@ -69,7 +81,6 @@ export class CaptureController {
           this.localTranslation.close();
           const message = errorMessage(error);
           if (!await this.windows.confirmStartWithoutTranslation(message)) throw error;
-          this.settings = { ...settings, translationEnabled: false };
           this.windows.sendStatus({ state: "connecting", detail: "Starting captions without translation" });
         }
       }

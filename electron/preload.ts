@@ -10,11 +10,12 @@ function subscribe<T>(channel: string, listener: Listener<T>): () => void {
 
 contextBridge.exposeInMainWorld("captions", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
+  getLanguageLibrary: () => ipcRenderer.invoke("language-library:get"),
+  runLanguageLibraryAction: (action?: unknown) => ipcRenderer.invoke("language-library:run", action),
   saveSettings: (settings: unknown) => ipcRenderer.invoke("settings:save", settings),
   setShortcutRecording: (recording: boolean) => ipcRenderer.invoke("shortcut:set-recording", recording),
-  getSessionSettings: () => ipcRenderer.invoke("session-settings:get"),
+  getSessionState: () => ipcRenderer.invoke("session-state:get"),
   saveSessionSettings: (settings: unknown) => ipcRenderer.invoke("session-settings:save", settings),
-  resetSessionSettings: () => ipcRenderer.invoke("session-settings:reset"),
   start: (settings: unknown) => ipcRenderer.invoke("capture:start", settings),
   stop: () => ipcRenderer.invoke("capture:stop"),
   clear: () => ipcRenderer.invoke("caption:clear"),
@@ -26,6 +27,10 @@ contextBridge.exposeInMainWorld("captions", {
   remindUpdateLater: (automaticallyDownload: boolean) => ipcRenderer.invoke("updater:remind-later", automaticallyDownload),
   skipUpdate: (automaticallyDownload: boolean) => ipcRenderer.invoke("updater:skip", automaticallyDownload),
   getOnboardingState: () => ipcRenderer.invoke("onboarding:get"),
+  getTranscriptionLanguages: () => ipcRenderer.invoke("language-catalog:transcription"),
+  getTranslationLanguages: (sourceLanguage?: string) => (
+    ipcRenderer.invoke("language-catalog:translation", sourceLanguage)
+  ),
   getTranscriptionModelAvailability: (language: string) => (
     ipcRenderer.invoke("onboarding:transcription-availability", language)
   ),
@@ -33,7 +38,6 @@ contextBridge.exposeInMainWorld("captions", {
     ipcRenderer.invoke("onboarding:translation-availability", sourceLanguage, targetLanguage)
   ),
   prepareTranscriptionModel: (language: string) => ipcRenderer.invoke("onboarding:prepare-transcription", language),
-  deleteTranscriptionModel: (language: string) => ipcRenderer.invoke("models:delete-transcription", language),
   prepareTranslationModels: (sourceLanguage: string, targetLanguage: string) => (
     ipcRenderer.invoke("onboarding:prepare-translation", sourceLanguage, targetLanguage)
   ),
@@ -41,6 +45,7 @@ contextBridge.exposeInMainWorld("captions", {
   onOnboardingModelStatus: (listener: Listener<unknown>) => subscribe("onboarding:model-status", listener),
   onStatus: (listener: Listener<unknown>) => subscribe("capture:status", listener),
   onSessionSettings: (listener: Listener<unknown>) => subscribe("session-settings:update", listener),
+  onLanguageLibrary: (listener: Listener<unknown>) => subscribe("language-library:update", listener),
   onUpdaterState: (listener: Listener<unknown>) => subscribe("updater:state", listener),
   onCaption: (listener: Listener<unknown>) => subscribe("caption:update", listener),
   onDebug: (listener: Listener<unknown>) => subscribe("caption:debug", listener)

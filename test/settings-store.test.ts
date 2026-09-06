@@ -61,11 +61,11 @@ test("clamps the overlay line count to three", () => {
   }
 });
 
-test("defaults the overlay line count to three", () => {
+test("defaults the overlay line count to two", () => {
   const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), "ccue-settings-"));
   try {
     const { readSettings } = loadSettingsStore(userDataPath);
-    assert.equal(readSettings().overlayLineCount, 3);
+    assert.equal(readSettings().overlayLineCount, 2);
   } finally {
     fs.rmSync(userDataPath, { recursive: true, force: true });
   }

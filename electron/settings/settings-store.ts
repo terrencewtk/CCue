@@ -18,7 +18,7 @@ const LEGACY_TRANSLATION_LANGUAGE_MIGRATIONS: Readonly<Record<string, string>> =
   "ja-JP": "ja",
   "ko-KR": "ko"
 };
-const DEFAULT_OVERLAY_LINE_COUNT = 3;
+const DEFAULT_OVERLAY_LINE_COUNT = 2;
 const MIN_OVERLAY_LINE_COUNT = 1;
 const MAX_OVERLAY_LINE_COUNT = 3;
 export const DEFAULT_GLOBAL_SHORTCUT = "CommandOrControl+Shift+L";

@@ -4,7 +4,7 @@ Thanks for helping improve CCue. The project is macOS-only because it relies on 
 
 ## Development setup
 
-Install Node.js 20 or later, Rust, and Xcode 26 or later with Swift 6.2+, then run:
+Install Node.js 22.12.0 or later, Rust, and Xcode 26 or later with Swift 6.2+, then run:
 
 ```bash
 npm ci

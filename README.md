@@ -53,7 +53,7 @@ The initial distribution supports Apple silicon (`arm64`) only. Every official b
 - Apple silicon Mac with macOS 26 or later
 - Xcode 26 or later (Swift 6.2+)
 - Rust toolchain
-- Node.js 20 or later and npm
+- Node.js 22.12.0 or later and npm
 
 CCue is macOS-only because its audio capture and speech pipeline rely on CoreAudio and Apple frameworks.
 

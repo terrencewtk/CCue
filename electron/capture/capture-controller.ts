@@ -3,6 +3,7 @@ import { CaptionService } from "../captions/caption-service";
 import { segmentDraftSentences } from "../captions/caption-timeline";
 import { LocalAsrStream } from "../local-asr/local-asr-stream";
 import { LocalTranslationService } from "../local-translation/local-translation-service";
+import { LatestTranslationScheduler } from "../local-translation/latest-translation-scheduler";
 import { normalizeCaptureSettings } from "../settings/settings-store";
 import type { AudioChunk, CaptureSettings, CaptureSettingsInput, SidecarEvent } from "../shared/types";
 import type { WindowManager } from "../ui/window-manager";
@@ -18,7 +19,7 @@ export class CaptureController {
   private audioClockMs = 0;
   private partialTranslationTimer?: NodeJS.Timeout;
   private partialTranslationGeneration = 0;
-  private readonly segmentTranslationCache = new Map<string, Promise<string>>();
+  private readonly translationScheduler: LatestTranslationScheduler;
   private translationReady = false;
 
   constructor(
@@ -36,6 +37,10 @@ export class CaptureController {
       onStatus: (detail) => this.windows.sendStatus({ state: "connecting", detail }),
       onFailure: (message) => this.handleTranslationFailure(message)
     });
+    this.translationScheduler = new LatestTranslationScheduler(
+      (text) => this.localTranslation.translate(text),
+      (error) => this.reportTranslationError(error)
+    );
     this.sidecar = new NativeSidecar({
       onEvent: (event) => this.handleSidecarEvent(event),
       onError: (message) => this.windows.sendStatus({ state: "error", detail: message }),
@@ -66,7 +71,7 @@ export class CaptureController {
     this.audioClockMs = 0;
     this.translationReady = false;
     this.cancelPartialTranslation();
-    this.segmentTranslationCache.clear();
+    this.translationScheduler.reset();
     this.localTranslation.close();
     this.windows.showOverlay();
     this.windows.sendStatus({ state: "connecting", detail: "Preparing on-device transcription" });
@@ -111,7 +116,7 @@ export class CaptureController {
     this.sidecar.send("stop");
     await this.localTranscription.stop();
     this.cancelPartialTranslation();
-    this.segmentTranslationCache.clear();
+    this.translationScheduler.reset();
     this.localTranslation.close();
     this.translationReady = false;
     this.audioClockMs = 0;
@@ -124,7 +129,7 @@ export class CaptureController {
     this.sidecar.quit();
     this.localTranscription.close();
     this.localTranslation.close();
-    this.segmentTranslationCache.clear();
+    this.translationScheduler.reset();
     this.translationReady = false;
   }
 
@@ -162,7 +167,7 @@ export class CaptureController {
     this.sidecar.send("stop");
     this.localTranscription.close();
     this.localTranslation.close();
-    this.segmentTranslationCache.clear();
+    this.translationScheduler.reset();
     this.translationReady = false;
     this.windows.hideOverlay();
     this.windows.sendStatus({ state: "error", detail: message });
@@ -182,32 +187,22 @@ export class CaptureController {
     const sessionId = this.sessionId;
     this.partialTranslationTimer = setTimeout(() => {
       this.partialTranslationTimer = undefined;
-      void Promise.all(segments.map((segment) => this.translateSegment(segment))).then((translations) => {
-        if (
+      this.translationScheduler.submitPartial({
+        segments,
+        isCurrent: () => (
           !this.capturing
-          || sessionId !== this.sessionId
-          || generation !== this.partialTranslationGeneration
-        ) return;
-        const translation = translations
-          .map((value) => value.replace(/\s+/gu, " ").trim())
-          .join("\n");
-        this.captions.updateLiveCaption({ ...utterance, translation }, source);
-      }).catch((error) => this.reportTranslationError(error));
+            ? false
+            : sessionId === this.sessionId
+              && generation === this.partialTranslationGeneration
+        ),
+        complete: (translations) => {
+          const translation = translations
+            .map((value) => value.replace(/\s+/gu, " ").trim())
+            .join("\n");
+          this.captions.updateLiveCaption({ ...utterance, translation }, source);
+        }
+      });
     }, 180);
-  }
-
-  private translateSegment(segment: string): Promise<string> {
-    const cached = this.segmentTranslationCache.get(segment);
-    if (cached) return cached;
-
-    const request = this.localTranslation.translate(segment).catch((error) => {
-      if (this.segmentTranslationCache.get(segment) === request) {
-        this.segmentTranslationCache.delete(segment);
-      }
-      throw error;
-    });
-    this.segmentTranslationCache.set(segment, request);
-    return request;
   }
 
   private handleFinal(utterance: Parameters<CaptionService["commitUtterance"]>[0], source: string): void {
@@ -217,19 +212,23 @@ export class CaptureController {
 
     const sessionId = this.sessionId;
     const segments = segmentDraftSentences(utterance.text);
-    void Promise.all(segments.map((segment) => this.translateSegment(segment))).then((translations) => {
-      if (!this.capturing || sessionId !== this.sessionId) return;
-      const translation = translations
-        .map((value) => value.replace(/\s+/gu, " ").trim())
-        .join("\n");
-      this.captions.setTranslation(id, translation);
-    }).catch((error) => this.reportTranslationError(error));
+    this.translationScheduler.submitFinal({
+      segments,
+      isCurrent: () => this.capturing && sessionId === this.sessionId,
+      complete: (translations) => {
+        const translation = translations
+          .map((value) => value.replace(/\s+/gu, " ").trim())
+          .join("\n");
+        this.captions.setTranslation(id, translation);
+      }
+    });
   }
 
   private cancelPartialTranslation(): void {
     this.partialTranslationGeneration += 1;
     if (this.partialTranslationTimer) clearTimeout(this.partialTranslationTimer);
     this.partialTranslationTimer = undefined;
+    this.translationScheduler.discardPartial();
   }
 
   private reportTranslationError(error: unknown): void {
@@ -244,7 +243,7 @@ export class CaptureController {
   private handleTranslationFailure(message: string): void {
     this.translationReady = false;
     this.cancelPartialTranslation();
-    this.segmentTranslationCache.clear();
+    this.translationScheduler.reset();
     this.localTranslation.close();
     this.windows.sendStatus({
       state: this.capturing ? "capturing" : "error",
